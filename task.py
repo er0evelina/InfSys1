@@ -3,7 +3,7 @@ from xml.etree import ElementTree as ET
 
 
 class Teacher:
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
 
         if len(args) == 1:
             data = args[0]
@@ -17,7 +17,7 @@ class Teacher:
             else:
                 raise ValueError("Single argument must be a string (formatted string, JSON or XML)")
         else:
-            self._init_from_params(*args)
+            self._init_from_params(*args, **kwargs)
 
     def _init_from_params(self, teacher_id, last_name, first_name, patronymic=None,
                           academic_degree=None, administrative_position=None, experience_years=0):
@@ -204,6 +204,29 @@ class Teacher:
             return f"{self._last_name} {self._first_name} {self._patronymic}"
         return f"{self._last_name} {self._first_name}"
 
+    def short_info(self):
+        return f"{self._teacher_id}: {self.get_full_name()} ({self._experience_years} лет)"
+
+    def full_info(self):
+        parts = [
+            f"ID: {self._teacher_id}",
+            f"Фамилия: {self._last_name}",
+            f"Имя: {self._first_name}"
+        ]
+
+        if self._patronymic:
+            parts.append(f"Отчество: {self._patronymic}")
+
+        if self._academic_degree:
+            parts.append(f"Ученая степень: {self._academic_degree}")
+
+        if self._administrative_position:
+            parts.append(f"Должность: {self._administrative_position}")
+
+        parts.append(f"Стаж: {self._experience_years} лет")
+
+        return ", ".join(parts)
+
     def __str__(self):
         return f"Teacher {self.teacher_id}: {self.get_full_name()}, Experience: {self._experience_years} years"
 
@@ -213,3 +236,15 @@ class Teacher:
                 f"academic_degree='{self._academic_degree}', "
                 f"administrative_position='{self._administrative_position}', "
                 f"experience_years={self._experience_years})")
+
+    def __eq__(self, other):
+        if not isinstance(other, Teacher):
+            return False
+
+        return (self._teacher_id == other._teacher_id and
+                self._last_name == other._last_name and
+                self._first_name == other._first_name and
+                self._patronymic == other._patronymic and
+                self._academic_degree == other._academic_degree and
+                self._administrative_position == other._administrative_position and
+                self._experience_years == other._experience_years)
