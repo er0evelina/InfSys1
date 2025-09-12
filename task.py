@@ -1,6 +1,26 @@
+import json
+from xml.etree import ElementTree as ET
+
+
 class Teacher:
-    def __init__(self, teacher_id, last_name, first_name, patronymic=None,
-                 academic_degree=None, administrative_position=None, experience_years=0):
+    def __init__(self, *args):
+
+        if len(args) == 1:
+            data = args[0]
+            if isinstance(data, str):
+                if data.strip().startswith('{') and data.strip().endswith('}'):
+                    self._init_from_json(data)
+                elif data.strip().startswith('<') and data.strip().endswith('>'):
+                    self._init_from_xml(data)
+                else:
+                    self._init_from_string(data)
+            else:
+                raise ValueError("Single argument must be a string (formatted string, JSON or XML)")
+        else:
+            self._init_from_params(*args)
+
+    def _init_from_params(self, teacher_id, last_name, first_name, patronymic=None,
+                          academic_degree=None, administrative_position=None, experience_years=0):
         self._teacher_id = self.validate_teacher_id(teacher_id)
         self._last_name = self.validate_non_empty_string(last_name, "Last name")
         self._first_name = self.validate_non_empty_string(first_name, "First name")
@@ -8,6 +28,90 @@ class Teacher:
         self._academic_degree = self.validate_optional_string(academic_degree)
         self._administrative_position = self.validate_optional_string(administrative_position)
         self._experience_years = self.validate_experience_years(experience_years)
+
+    def _init_from_string(self, data_string):
+        parts = data_string.split(';')
+        if len(parts) != 7:
+            raise ValueError("String format must be: id;last_name;first_name;patronymic;degree;position;experience")
+
+        try:
+            teacher_id = int(parts[0])
+            experience_years = int(parts[6])
+        except ValueError:
+            raise ValueError("ID and experience must be integers")
+
+        self._init_from_params(
+            teacher_id=teacher_id,
+            last_name=parts[1],
+            first_name=parts[2],
+            patronymic=parts[3] if parts[3] != '' else None,
+            academic_degree=parts[4] if parts[4] != '' else None,
+            administrative_position=parts[5] if parts[5] != '' else None,
+            experience_years=experience_years
+        )
+
+    def _init_from_json(self, json_string):
+        try:
+            data = json.loads(json_string)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON format")
+
+        if not isinstance(data, dict):
+            raise ValueError("JSON must be an object")
+
+        required_fields = ['teacher_id', 'last_name', 'first_name']
+        for field in required_fields:
+            if field not in data:
+                raise ValueError(f"Missing required field in JSON: {field}")
+
+        self._init_from_params(
+            teacher_id=data['teacher_id'],
+            last_name=data['last_name'],
+            first_name=data['first_name'],
+            patronymic=data.get('patronymic'),
+            academic_degree=data.get('academic_degree'),
+            administrative_position=data.get('administrative_position'),
+            experience_years=data.get('experience_years', 0)
+        )
+
+    def _init_from_xml(self, xml_string):
+        try:
+            root = ET.fromstring(xml_string)
+        except ET.ParseError:
+            raise ValueError("Invalid XML format")
+
+        if root.tag != 'teacher':
+            raise ValueError("XML root element must be 'teacher'")
+
+        required_fields = ['teacher_id', 'last_name', 'first_name']
+        data = {}
+        for field in required_fields:
+            element = root.find(field)
+            if element is None:
+                raise ValueError(f"Missing required field in XML: {field}")
+            data[field] = element.text
+
+        optional_fields = ['patronymic', 'academic_degree', 'administrative_position', 'experience_years']
+        for field in optional_fields:
+            element = root.find(field)
+            if element is not None and element.text is not None:
+                data[field] = element.text
+
+        try:
+            teacher_id = int(data['teacher_id'])
+            experience_years = int(data.get('experience_years', 0))
+        except ValueError:
+            raise ValueError("ID and experience must be integers in XML")
+
+        self._init_from_params(
+            teacher_id=teacher_id,
+            last_name=data['last_name'],
+            first_name=data['first_name'],
+            patronymic=data.get('patronymic'),
+            academic_degree=data.get('academic_degree'),
+            administrative_position=data.get('administrative_position'),
+            experience_years=experience_years
+        )
 
     @staticmethod
     def validate_teacher_id(teacher_id):
