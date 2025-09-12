@@ -1,14 +1,12 @@
 class Teacher:
-
     def __init__(self, teacher_id, last_name, first_name, patronymic=None,
                  academic_degree=None, administrative_position=None, experience_years=0):
-
         self._teacher_id = self.validate_teacher_id(teacher_id)
-        self._last_name = self.validate_last_name(last_name)
-        self._first_name = self.validate_first_name(first_name)
-        self._patronymic = self.validate_patronymic(patronymic)
-        self._academic_degree = self.validate_academic_degree(academic_degree)
-        self._administrative_position = self.validate_administrative_position(administrative_position)
+        self._last_name = self.validate_non_empty_string(last_name, "Last name")
+        self._first_name = self.validate_non_empty_string(first_name, "First name")
+        self._patronymic = self.validate_optional_string(patronymic)
+        self._academic_degree = self.validate_optional_string(academic_degree)
+        self._administrative_position = self.validate_optional_string(administrative_position)
         self._experience_years = self.validate_experience_years(experience_years)
 
     @staticmethod
@@ -18,46 +16,20 @@ class Teacher:
         return teacher_id
 
     @staticmethod
-    def validate_last_name(last_name):
-        if not isinstance(last_name, str) or len(last_name.strip()) == 0:
-            raise ValueError("only non-empty string")
-        return last_name.strip()
+    def validate_non_empty_string(value, field_name="Value"):
+        if not isinstance(value, str) or len(value.strip()) == 0:
+            raise ValueError(f"{field_name}: only non-empty string")
+        return value.strip()
 
     @staticmethod
-    def validate_first_name(first_name):
-        if not isinstance(first_name, str) or len(first_name.strip()) == 0:
-            raise ValueError("only non-empty string")
-        return first_name.strip()
-
-    @staticmethod
-    def validate_patronymic(patronymic):
-        if patronymic is None:
+    def validate_optional_string(value):
+        if value is None:
             return None
-        if not isinstance(patronymic, str):
+        if not isinstance(value, str):
             raise ValueError("only None or a string")
-        if len(patronymic.strip()) == 0:
+        if len(value.strip()) == 0:
             return None
-        return patronymic.strip()
-
-    @staticmethod
-    def validate_academic_degree(academic_degree):
-        if academic_degree is None:
-            return None
-        if not isinstance(academic_degree, str):
-            raise ValueError("only None or a string")
-        if len(academic_degree.strip()) == 0:
-            return None  # None
-        return academic_degree.strip()
-
-    @staticmethod
-    def validate_administrative_position(administrative_position):
-        if administrative_position is None:
-            return None
-        if not isinstance(administrative_position, str):
-            raise ValueError("only None or a string")
-        if len(administrative_position.strip()) == 0:
-            return None  # None
-        return administrative_position.strip()
+        return value.strip()
 
     @staticmethod
     def validate_experience_years(experience_years):
@@ -101,23 +73,23 @@ class Teacher:
 
     @last_name.setter
     def last_name(self, value):
-        self._last_name = self.validate_last_name(value)
+        self._last_name = self.validate_non_empty_string(value, "Last name")
 
     @first_name.setter
     def first_name(self, value):
-        self._first_name = self.validate_first_name(value)
+        self._first_name = self.validate_non_empty_string(value, "First name")
 
     @patronymic.setter
     def patronymic(self, value):
-        self._patronymic = self.validate_patronymic(value)
+        self._patronymic = self.validate_optional_string(value)
 
     @academic_degree.setter
     def academic_degree(self, value):
-        self._academic_degree = self.validate_academic_degree(value)
+        self._academic_degree = self.validate_optional_string(value)
 
     @administrative_position.setter
     def administrative_position(self, value):
-        self._administrative_position = self.validate_administrative_position(value)
+        self._administrative_position = self.validate_optional_string(value)
 
     @experience_years.setter
     def experience_years(self, value):
