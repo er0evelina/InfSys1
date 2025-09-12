@@ -42,9 +42,8 @@ class Employee:
         self._experience_years = value
 
 
-class Teacher:
+class Teacher(Employee):
     def __init__(self, *args, **kwargs):
-
         if len(args) == 1:
             data = args[0]
             if isinstance(data, str):
@@ -61,13 +60,11 @@ class Teacher:
 
     def _init_from_params(self, teacher_id, last_name, first_name, patronymic=None,
                           academic_degree=None, administrative_position=None, experience_years=0):
-        self._teacher_id = self.validate_teacher_id(teacher_id)
-        self._last_name = self.validate_non_empty_string(last_name, "Last name")
-        self._first_name = self.validate_non_empty_string(first_name, "First name")
+        super().__init__(teacher_id, last_name, first_name, experience_years)
+
         self._patronymic = self.validate_optional_string(patronymic)
         self._academic_degree = self.validate_optional_string(academic_degree)
         self._administrative_position = self.validate_optional_string(administrative_position)
-        self._experience_years = self.validate_experience_years(experience_years)
 
     def _init_from_string(self, data_string):
         parts = data_string.split(';')
@@ -184,15 +181,7 @@ class Teacher:
     # Геттеры
     @property
     def teacher_id(self):
-        return self._teacher_id
-
-    @property
-    def last_name(self):
-        return self._last_name
-
-    @property
-    def first_name(self):
-        return self._first_name
+        return self._employee_id  # Используем employee_id из родительского класса
 
     @property
     def patronymic(self):
@@ -206,22 +195,10 @@ class Teacher:
     def administrative_position(self):
         return self._administrative_position
 
-    @property
-    def experience_years(self):
-        return self._experience_years
-
     # Сеттеры
     @teacher_id.setter
     def teacher_id(self, value):
-        self._teacher_id = self.validate_teacher_id(value)
-
-    @last_name.setter
-    def last_name(self, value):
-        self._last_name = self.validate_non_empty_string(value, "Last name")
-
-    @first_name.setter
-    def first_name(self, value):
-        self._first_name = self.validate_non_empty_string(value, "First name")
+        self._employee_id = self.validate_teacher_id(value)  # Используем employee_id из родительского класса
 
     @patronymic.setter
     def patronymic(self, value):
@@ -235,21 +212,17 @@ class Teacher:
     def administrative_position(self, value):
         self._administrative_position = self.validate_optional_string(value)
 
-    @experience_years.setter
-    def experience_years(self, value):
-        self._experience_years = self.validate_experience_years(value)
-
     def get_full_name(self):
         if self._patronymic:
             return f"{self._last_name} {self._first_name} {self._patronymic}"
         return f"{self._last_name} {self._first_name}"
 
     def short_info(self):
-        return f"{self._teacher_id}: {self.get_full_name()} ({self._experience_years} лет)"
+        return f"{self._employee_id}: {self.get_full_name()} ({self._experience_years} лет)"
 
     def full_info(self):
         parts = [
-            f"ID: {self._teacher_id}",
+            f"ID: {self._employee_id}",
             f"Фамилия: {self._last_name}",
             f"Имя: {self._first_name}"
         ]
@@ -271,7 +244,7 @@ class Teacher:
         return f"Teacher {self.teacher_id}: {self.get_full_name()}, Experience: {self._experience_years} years"
 
     def __repr__(self):
-        return (f"Teacher(teacher_id={self._teacher_id}, last_name='{self._last_name}', "
+        return (f"Teacher(teacher_id={self._employee_id}, last_name='{self._last_name}', "
                 f"first_name='{self._first_name}', patronymic='{self._patronymic}', "
                 f"academic_degree='{self._academic_degree}', "
                 f"administrative_position='{self._administrative_position}', "
@@ -281,11 +254,10 @@ class Teacher:
         if not isinstance(other, Teacher):
             return False
 
-        return (self._teacher_id == other._teacher_id and
+        return (self._employee_id == other._employee_id and
                 self._last_name == other._last_name and
                 self._first_name == other._first_name and
                 self._patronymic == other._patronymic and
                 self._academic_degree == other._academic_degree and
                 self._administrative_position == other._administrative_position and
                 self._experience_years == other._experience_years)
-
