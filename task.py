@@ -2,6 +2,46 @@ import json
 from xml.etree import ElementTree as ET
 
 
+class Employee:
+    def __init__(self, employee_id, last_name, first_name, experience_years=0):
+        self._employee_id = employee_id
+        self._last_name = last_name
+        self._first_name = first_name
+        self._experience_years = experience_years
+
+    @property
+    def employee_id(self):
+        return self._employee_id
+
+    @property
+    def last_name(self):
+        return self._last_name
+
+    @property
+    def first_name(self):
+        return self._first_name
+
+    @property
+    def experience_years(self):
+        return self._experience_years
+
+    @employee_id.setter
+    def employee_id(self, value):
+        self._employee_id = value
+
+    @last_name.setter
+    def last_name(self, value):
+        self._last_name = value
+
+    @first_name.setter
+    def first_name(self, value):
+        self._first_name = value
+
+    @experience_years.setter
+    def experience_years(self, value):
+        self._experience_years = value
+
+
 class Teacher:
     def __init__(self, *args, **kwargs):
 
@@ -248,3 +288,4 @@ class Teacher:
                 self._academic_degree == other._academic_degree and
                 self._administrative_position == other._administrative_position and
                 self._experience_years == other._experience_years)
+
