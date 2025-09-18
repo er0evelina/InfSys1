@@ -1,45 +1,79 @@
 import json
+import re
 from xml.etree import ElementTree as ET
 
 
 class Employee:
-    def __init__(self, employee_id, last_name, first_name, experience_years=0):
-        self._employee_id = employee_id
-        self._last_name = last_name
-        self._first_name = first_name
-        self._experience_years = experience_years
+    def __init__(self, employee_id: int, last_name: str, first_name: str, experience_years: int = 0):
+        self._employee_id = self.validate_employee_id(employee_id)
+        self._last_name = self.validate_name(last_name, "Last name")
+        self._first_name = self.validate_name(first_name, "First name")
+        self._experience_years = self.validate_experience_years(experience_years)
+
+    @staticmethod
+    def validate_employee_id(employee_id: int) -> int:
+        if not isinstance(employee_id, int) or employee_id <= 0:
+            raise ValueError("Employee ID must be a positive integer")
+        return employee_id
+
+    @staticmethod
+    def validate_name(name: str, field_name: str = "Name", optional: bool = False) -> str | None:
+        if optional and name is None:
+            return None
+
+        if optional and isinstance(name, str) and name.strip() == '':
+            return None
+
+        if not isinstance(name, str):
+            raise ValueError(f"{field_name} must be a string")
+
+        name = name.strip()
+        if len(name) == 0:
+            raise ValueError(f"{field_name} cannot be empty")
+
+        # Регулярное выражение для проверки имени: только буквы, дефисы и пробелы
+        if not re.match(r'^[A-Za-zА-Яа-яЁё\- ]+$', name):
+            raise ValueError(f"{field_name} can only contain letters, hyphens and spaces")
+
+        return name
+
+    @staticmethod
+    def validate_experience_years(experience_years: int) -> int:
+        if not isinstance(experience_years, int) or experience_years < 0:
+            raise ValueError("Experience years must be a non-negative integer")
+        return experience_years
 
     @property
-    def employee_id(self):
+    def employee_id(self) -> int:
         return self._employee_id
 
     @property
-    def last_name(self):
+    def last_name(self) -> str:
         return self._last_name
 
     @property
-    def first_name(self):
+    def first_name(self) -> str:
         return self._first_name
 
     @property
-    def experience_years(self):
+    def experience_years(self) -> int:
         return self._experience_years
 
     @employee_id.setter
-    def employee_id(self, value):
-        self._employee_id = value
+    def employee_id(self, value: int):
+        self._employee_id = self.validate_employee_id(value)
 
     @last_name.setter
-    def last_name(self, value):
-        self._last_name = value
+    def last_name(self, value: str):
+        self._last_name = self.validate_name(value, "Last name")
 
     @first_name.setter
-    def first_name(self, value):
-        self._first_name = value
+    def first_name(self, value: str):
+        self._first_name = self.validate_name(value, "First name")
 
     @experience_years.setter
-    def experience_years(self, value):
-        self._experience_years = value
+    def experience_years(self, value: int):
+        self._experience_years = self.validate_experience_years(value)
 
 
 class Teacher(Employee):
@@ -58,15 +92,31 @@ class Teacher(Employee):
         else:
             self._init_from_params(*args, **kwargs)
 
-    def _init_from_params(self, teacher_id, last_name, first_name, patronymic=None,
-                          academic_degree=None, administrative_position=None, experience_years=0):
+    def _init_from_params(self, teacher_id: int, last_name: str, first_name: str, patronymic: str | None = None,
+                          academic_degree: str | None = None, administrative_position: str | None = None,
+                          experience_years: int = 0):
         super().__init__(teacher_id, last_name, first_name, experience_years)
 
-        self._patronymic = self.validate_optional_string(patronymic)
-        self._academic_degree = self.validate_optional_string(academic_degree)
-        self._administrative_position = self.validate_optional_string(administrative_position)
+        self._patronymic = Employee.validate_name(patronymic, "patronymic", True)
+        self._academic_degree = Teacher.validate_optional_string(academic_degree, "academic_degree")
+        self._administrative_position = Teacher.validate_optional_string(administrative_position, "administrative_degree")
 
-    def _init_from_string(self, data_string):
+    @staticmethod
+    def validate_optional_string(value: str | None, field_name: str) -> str | None:
+        if value is None:
+            return None
+
+        academic_degree = value.strip()
+        if len(academic_degree) == 0:
+            return None
+
+        # Ученая степень может содержать буквы, цифры, точки, запятые и другие допустимые символы
+        if not re.match(r'^[A-Za-zА-Яа-яЁё0-9\s\.,\-\(\)]+$', academic_degree):
+            raise ValueError(f"A{field_name} contains invalid characters")
+
+        return academic_degree
+
+    def _init_from_string(self, data_string: str):
         parts = data_string.split(';')
         if len(parts) != 7:
             raise ValueError("String format must be: id;last_name;first_name;patronymic;degree;position;experience")
@@ -87,7 +137,7 @@ class Teacher(Employee):
             experience_years=experience_years
         )
 
-    def _init_from_json(self, json_string):
+    def _init_from_json(self, json_string: str):
         try:
             data = json.loads(json_string)
         except json.JSONDecodeError:
@@ -111,7 +161,7 @@ class Teacher(Employee):
             experience_years=data.get('experience_years', 0)
         )
 
-    def _init_from_xml(self, xml_string):
+    def _init_from_xml(self, xml_string: str):
         try:
             root = ET.fromstring(xml_string)
         except ET.ParseError:
@@ -150,77 +200,49 @@ class Teacher(Employee):
             experience_years=experience_years
         )
 
-    @staticmethod
-    def validate_teacher_id(teacher_id):
-        if not isinstance(teacher_id, int) or teacher_id <= 0:
-            raise ValueError("only positive integer")
-        return teacher_id
-
-    @staticmethod
-    def validate_non_empty_string(value, field_name="Value"):
-        if not isinstance(value, str) or len(value.strip()) == 0:
-            raise ValueError(f"{field_name}: only non-empty string")
-        return value.strip()
-
-    @staticmethod
-    def validate_optional_string(value):
-        if value is None:
-            return None
-        if not isinstance(value, str):
-            raise ValueError("only None or a string")
-        if len(value.strip()) == 0:
-            return None
-        return value.strip()
-
-    @staticmethod
-    def validate_experience_years(experience_years):
-        if not isinstance(experience_years, int) or experience_years < 0:
-            raise ValueError("Experience years. only non-negative integer")
-        return experience_years
-
     # Геттеры
     @property
-    def teacher_id(self):
-        return self._employee_id  # Используем employee_id из родительского класса
+    def teacher_id(self) -> int:
+        return self._employee_id
 
     @property
-    def patronymic(self):
+    def patronymic(self) -> str | None:
         return self._patronymic
 
     @property
-    def academic_degree(self):
+    def academic_degree(self) -> str | None:
         return self._academic_degree
 
     @property
-    def administrative_position(self):
+    def administrative_position(self) -> str | None:
         return self._administrative_position
 
     # Сеттеры
     @teacher_id.setter
-    def teacher_id(self, value):
-        self._employee_id = self.validate_teacher_id(value)  # Используем employee_id из родительского класса
+    def teacher_id(self, value: int):
+        self._employee_id = self.validate_employee_id(value)
 
     @patronymic.setter
-    def patronymic(self, value):
-        self._patronymic = self.validate_optional_string(value)
+    def patronymic(self, value: str | None):
+        self._patronymic = Employee.validate_name(value, "patronymic", True)
 
     @academic_degree.setter
-    def academic_degree(self, value):
-        self._academic_degree = self.validate_optional_string(value)
+    def academic_degree(self, value: str | None):
+        self._academic_degree = Teacher.validate_optional_string(value, "academic_degree")
 
     @administrative_position.setter
-    def administrative_position(self, value):
-        self._administrative_position = self.validate_optional_string(value)
+    def administrative_position(self, value: str | None):
+        self._administrative_position = Teacher.validate_optional_string(value, "administrative_position")
 
-    def get_full_name(self):
+    def get_full_name(self) -> str:
         if self._patronymic:
             return f"{self._last_name} {self._first_name} {self._patronymic}"
         return f"{self._last_name} {self._first_name}"
 
-    def short_info(self):
+    def short_info(self) -> str:
         return f"{self._employee_id}: {self.get_full_name()} ({self._experience_years} лет)"
 
-    def full_info(self):
+    def full_info(self) -> str:
         parts = [
             f"ID: {self._employee_id}",
             f"Фамилия: {self._last_name}",
@@ -240,17 +262,17 @@ class Teacher(Employee):
 
         return ", ".join(parts)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Teacher {self.teacher_id}: {self.get_full_name()}, Experience: {self._experience_years} years"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (f"Teacher(teacher_id={self._employee_id}, last_name='{self._last_name}', "
                 f"first_name='{self._first_name}', patronymic='{self._patronymic}', "
                 f"academic_degree='{self._academic_degree}', "
                 f"administrative_position='{self._administrative_position}', "
                 f"experience_years={self._experience_years})")
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Teacher):
             return False
 
