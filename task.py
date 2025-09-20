@@ -78,45 +78,37 @@ class Employee:
 
 class Teacher(Employee):
     def __init__(self, *args, **kwargs):
-        if len(args) == 1:
+        if len(args) == 1 and not kwargs:
             data = args[0]
             if isinstance(data, str):
-                if data.strip().startswith('{') and data.strip().endswith('}'):
-                    self._init_from_json(data)
-                elif data.strip().startswith('<') and data.strip().endswith('>'):
-                    self._init_from_xml(data)
+                data = data.strip()
+                if data.startswith('{') and data.endswith('}'):
+                    params = Teacher._parse_json(data)
+                elif data.startswith('<') and data.endswith('>'):
+                    params = Teacher._parse_xml(data)
                 else:
-                    self._init_from_string(data)
+                    params = Teacher._parse_string(data)
             else:
                 raise ValueError("Single argument must be a string (formatted string, JSON or XML)")
         else:
-            self._init_from_params(*args, **kwargs)
+            params = {
+                'teacher_id': kwargs.get('teacher_id', args[0] if len(args) > 0 else None),
+                'last_name': kwargs.get('last_name', args[1] if len(args) > 1 else None),
+                'first_name': kwargs.get('first_name', args[2] if len(args) > 2 else None),
+                'patronymic': kwargs.get('patronymic', args[3] if len(args) > 3 else None),
+                'academic_degree': kwargs.get('academic_degree', args[4] if len(args) > 4 else None),
+                'administrative_position': kwargs.get('administrative_position', args[5] if len(args) > 5 else None),
+                'experience_years': kwargs.get('experience_years', args[6] if len(args) > 6 else 0)
+            }
 
-    def _init_from_params(self, teacher_id: int, last_name: str, first_name: str, patronymic: str | None = None,
-                          academic_degree: str | None = None, administrative_position: str | None = None,
-                          experience_years: int = 0):
-        super().__init__(teacher_id, last_name, first_name, experience_years)
+        super().__init__(params['teacher_id'], params['last_name'], params['first_name'], params['experience_years'])
 
-        self._patronymic = Employee.validate_name(patronymic, "patronymic", True)
-        self._academic_degree = Teacher.validate_optional_string(academic_degree, "academic_degree")
-        self._administrative_position = Teacher.validate_optional_string(administrative_position, "administrative_degree")
-
+        self._patronymic = Employee.validate_name(params.get('patronymic'), "patronymic", True)
+        self._academic_degree = Teacher.validate_optional_string(params.get('academic_degree'), "academic_degree")
+        self._administrative_position = Teacher.validate_optional_string(params.get('administrative_position'),
+                                                                         "administrative_degree")
     @staticmethod
-    def validate_optional_string(value: str | None, field_name: str) -> str | None:
-        if value is None:
-            return None
-
-        academic_degree = value.strip()
-        if len(academic_degree) == 0:
-            return None
-
-        # Ученая степень может содержать буквы, цифры, точки, запятые и другие допустимые символы
-        if not re.match(r'^[A-Za-zА-Яа-яЁё0-9\s\.,\-\(\)]+$', academic_degree):
-            raise ValueError(f"A{field_name} contains invalid characters")
-
-        return academic_degree
-
-    def _init_from_string(self, data_string: str):
+    def _parse_string(data_string):
         parts = data_string.split(';')
         if len(parts) != 7:
             raise ValueError("String format must be: id;last_name;first_name;patronymic;degree;position;experience")
@@ -127,17 +119,18 @@ class Teacher(Employee):
         except ValueError:
             raise ValueError("ID and experience must be integers")
 
-        self._init_from_params(
-            teacher_id=teacher_id,
-            last_name=parts[1],
-            first_name=parts[2],
-            patronymic=parts[3] if parts[3] != '' else None,
-            academic_degree=parts[4] if parts[4] != '' else None,
-            administrative_position=parts[5] if parts[5] != '' else None,
-            experience_years=experience_years
-        )
+        return {
+            'teacher_id': teacher_id,
+            'last_name': parts[1],
+            'first_name': parts[2],
+            'patronymic': parts[3] if parts[3] != '' else None,
+            'academic_degree': parts[4] if parts[4] != '' else None,
+            'administrative_position': parts[5] if parts[5] != '' else None,
+            'experience_years': experience_years
+        }
 
-    def _init_from_json(self, json_string: str):
+    @staticmethod
+    def _parse_json(json_string):
         try:
             data = json.loads(json_string)
         except json.JSONDecodeError:
@@ -151,17 +144,18 @@ class Teacher(Employee):
             if field not in data:
                 raise ValueError(f"Missing required field in JSON: {field}")
 
-        self._init_from_params(
-            teacher_id=data['teacher_id'],
-            last_name=data['last_name'],
-            first_name=data['first_name'],
-            patronymic=data.get('patronymic'),
-            academic_degree=data.get('academic_degree'),
-            administrative_position=data.get('administrative_position'),
-            experience_years=data.get('experience_years', 0)
-        )
+        return {
+            'teacher_id': data['teacher_id'],
+            'last_name': data['last_name'],
+            'first_name': data['first_name'],
+            'patronymic': data.get('patronymic'),
+            'academic_degree': data.get('academic_degree'),
+            'administrative_position': data.get('administrative_position'),
+            'experience_years': data.get('experience_years', 0)
+        }
 
-    def _init_from_xml(self, xml_string: str):
+    @staticmethod
+    def _parse_xml(xml_string):
         try:
             root = ET.fromstring(xml_string)
         except ET.ParseError:
@@ -190,15 +184,31 @@ class Teacher(Employee):
         except ValueError:
             raise ValueError("ID and experience must be integers in XML")
 
-        self._init_from_params(
-            teacher_id=teacher_id,
-            last_name=data['last_name'],
-            first_name=data['first_name'],
-            patronymic=data.get('patronymic'),
-            academic_degree=data.get('academic_degree'),
-            administrative_position=data.get('administrative_position'),
-            experience_years=experience_years
-        )
+        return {
+            'teacher_id': teacher_id,
+            'last_name': data['last_name'],
+            'first_name': data['first_name'],
+            'patronymic': data.get('patronymic'),
+            'academic_degree': data.get('academic_degree'),
+            'administrative_position': data.get('administrative_position'),
+            'experience_years': experience_years
+        }
+    
+
+    @staticmethod
+    def validate_optional_string(value: str | None, field_name: str) -> str | None:
+        if value is None:
+            return None
+
+        academic_degree = value.strip()
+        if len(academic_degree) == 0:
+            return None
+
+        # Ученая степень может содержать буквы, цифры, точки, запятые и другие допустимые символы
+        if not re.match(r'^[A-Za-zА-Яа-яЁё0-9\s\.,\-\(\)]+$', academic_degree):
+            raise ValueError(f"A{field_name} contains invalid characters")
+
+        return academic_degree
 
     # Геттеры
     @property
@@ -283,3 +293,4 @@ class Teacher(Employee):
                 self._academic_degree == other._academic_degree and
                 self._administrative_position == other._administrative_position and
                 self._experience_years == other._experience_years)
+
