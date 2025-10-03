@@ -2,6 +2,7 @@ from typing import List
 import json
 import yaml
 from task1 import Teacher
+import psycopg2
 
 
 class TeacherRepository:
@@ -188,3 +189,146 @@ class TeacherRepYaml(TeacherRepository):
 
         with open(self._filename, 'w', encoding='utf-8') as file:
             yaml.dump(data, file, allow_unicode=True, default_flow_style=False, indent=2)
+
+
+class TeacherRepDB:
+    def __init__(self, host: str, database: str, username: str, password: str, port: int = 5432):
+        self._connection_string = f"host={host} dbname={database} user={username} password={password} port={port}"
+        self._create_table_if_not_exists()
+
+    def _get_connection(self):
+        return psycopg2.connect(self._connection_string)
+
+    def _create_table_if_not_exists(self):
+        create_table_sql = """
+        CREATE TABLE IF NOT EXISTS teachers (
+            teacher_id SERIAL PRIMARY KEY,
+            last_name VARCHAR(100) NOT NULL,
+            first_name VARCHAR(100) NOT NULL,
+            patronymic VARCHAR(100),
+            academic_degree VARCHAR(200),
+            administrative_position VARCHAR(200),
+            experience_years INTEGER NOT NULL DEFAULT 0
+        )
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(create_table_sql)
+            conn.commit()
+
+    def get_by_id(self, teacher_id: int) -> Teacher | None:
+        sql = "SELECT teacher_id, last_name, first_name, patronymic, academic_degree, administrative_position, experience_years FROM teachers WHERE teacher_id = %s"
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (teacher_id,))
+            row = cursor.fetchone()
+            if row:
+                return Teacher(
+                    teacher_id=row[0],
+                    last_name=row[1],
+                    first_name=row[2],
+                    patronymic=row[3],
+                    academic_degree=row[4],
+                    administrative_position=row[5],
+                    experience_years=row[6]
+                )
+        return None
+
+    def get_k_n_short_list(self, k: int, n: int) -> List[str]:
+        sql = """
+        SELECT teacher_id, last_name, first_name, patronymic, experience_years 
+        FROM teachers 
+        ORDER BY teacher_id 
+        LIMIT %s OFFSET %s
+        """
+        offset = (n - 1) * k
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (k, offset))
+            rows = cursor.fetchall()
+            result = []
+            for row in rows:
+                teacher = Teacher(
+                    teacher_id=row[0],
+                    last_name=row[1],
+                    first_name=row[2],
+                    patronymic=row[3],
+                    experience_years=row[4]
+                )
+                result.append(teacher.short_info())
+            return result
+
+    def add_teacher(self, teacher_data: dict) -> Teacher:
+        sql = """
+        INSERT INTO teachers (last_name, first_name, patronymic, academic_degree, administrative_position, experience_years)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING teacher_id
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (
+                teacher_data['last_name'],
+                teacher_data['first_name'],
+                teacher_data.get('patronymic'),
+                teacher_data.get('academic_degree'),
+                teacher_data.get('administrative_position'),
+                teacher_data.get('experience_years', 0)
+            ))
+            new_id = cursor.fetchone()[0]
+            conn.commit()
+
+            return Teacher(
+                teacher_id=new_id,
+                last_name=teacher_data['last_name'],
+                first_name=teacher_data['first_name'],
+                patronymic=teacher_data.get('patronymic'),
+                academic_degree=teacher_data.get('academic_degree'),
+                administrative_position=teacher_data.get('administrative_position'),
+                experience_years=teacher_data.get('experience_years', 0)
+            )
+
+    def update_teacher(self, teacher_id: int, teacher_data: dict) -> Teacher | None:
+        sql = """
+        UPDATE teachers 
+        SET last_name = %s, first_name = %s, patronymic = %s, academic_degree = %s, administrative_position = %s, experience_years = %s
+        WHERE teacher_id = %s
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (
+                teacher_data['last_name'],
+                teacher_data['first_name'],
+                teacher_data.get('patronymic'),
+                teacher_data.get('academic_degree'),
+                teacher_data.get('administrative_position'),
+                teacher_data.get('experience_years', 0),
+                teacher_id
+            ))
+            if cursor.rowcount > 0:
+                conn.commit()
+                return Teacher(
+                    teacher_id=teacher_id,
+                    last_name=teacher_data['last_name'],
+                    first_name=teacher_data['first_name'],
+                    patronymic=teacher_data.get('patronymic'),
+                    academic_degree=teacher_data.get('academic_degree'),
+                    administrative_position=teacher_data.get('administrative_position'),
+                    experience_years=teacher_data.get('experience_years', 0)
+                )
+        return None
+
+    def delete_teacher(self, teacher_id: int) -> bool:
+        sql = "DELETE FROM teachers WHERE teacher_id = %s"
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (teacher_id,))
+            deleted = cursor.rowcount > 0
+            conn.commit()
+            return deleted
+
+    def get_count(self) -> int:
+        sql = "SELECT COUNT(*) as count FROM teachers"
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql)
+            return cursor.fetchone()[0]
