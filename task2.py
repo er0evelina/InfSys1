@@ -413,7 +413,7 @@ class TeacherRepDB:
 
 
 class FilterSortDecorator:
-    def __init__(self, repository):
+    def __init__(self, repository: TeacherRepository):
         self._repository = repository
 
     def get_k_n_short_list(self, k: int, n: int, filter_func: Callable = None, sort_func: Callable = None) -> List[str]:
