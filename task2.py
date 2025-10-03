@@ -409,3 +409,37 @@ class TeacherRepDB:
                 )
                 result.append(teacher)
             return result
+
+
+
+class FilterSortDecorator:
+    def __init__(self, repository):
+        self._repository = repository
+
+    def get_k_n_short_list(self, k: int, n: int, filter_func: Callable = None, sort_func: Callable = None) -> List[str]:
+        teachers = self._repository.get_all_teachers()
+
+        if filter_func:
+            teachers = [t for t in teachers if filter_func(t)]
+
+        if sort_func:
+            teachers = sorted(teachers, key=sort_func)
+
+        start_index = (n - 1) * k
+        end_index = start_index + k
+
+        if start_index >= len(teachers):
+            return []
+
+        return [teacher.short_info() for teacher in teachers[start_index:end_index]]
+
+    def get_count(self, filter_func: Callable = None) -> int:
+        teachers = self._repository.get_all_teachers()
+
+        if filter_func:
+            teachers = [t for t in teachers if filter_func(t)]
+
+        return len(teachers)
+
+    def __getattr__(self, name):
+        return getattr(self._repository, name)
