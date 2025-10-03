@@ -192,6 +192,49 @@ class TeacherRepYaml(TeacherRepository):
             yaml.dump(data, file, allow_unicode=True, default_flow_style=False, indent=2)
 
 
+class TeacherRepDBAdapter(TeacherRepository):
+    def __init__(self, host: str, database: str, username: str, password: str, port: int = 5432):
+        super().__init__("")
+        self._db_repository = TeacherRepDB(host, database, username, password, port)
+
+    def get_by_id(self, teacher_id: int) -> Teacher | None:
+        return self._db_repository.get_by_id(teacher_id)
+
+    def get_k_n_short_list(self, k: int, n: int) -> List[str]:
+        return self._db_repository.get_k_n_short_list(k, n)
+
+    def add_teacher(self, teacher_data: dict) -> Teacher:
+        return self._db_repository.add_teacher(teacher_data)
+
+    def update_teacher(self, teacher_id: int, teacher_data: dict) -> Teacher | None:
+        return self._db_repository.update_teacher(teacher_id, teacher_data)
+
+    def delete_teacher(self, teacher_id: int) -> bool:
+        return self._db_repository.delete_teacher(teacher_id)
+
+    def get_count(self) -> int:
+        return self._db_repository.get_count()
+
+    def get_all_teachers(self) -> List[Teacher]:
+        return self._db_repository.get_all_teachers()
+
+    def sort_by_field(self, field: str = "last_name") -> List[Teacher]:
+        all_teachers = self._db_repository.get_all_teachers()
+
+        sort_functions = {
+            'teacher_id': lambda t: t.teacher_id,
+            'last_name': lambda t: t.last_name,
+            'first_name': lambda t: t.first_name,
+            'experience_years': lambda t: t.experience_years
+        }
+
+        if field not in sort_functions:
+            raise ValueError(f"Недопустимое поле для сортировки: {field}")
+
+        return sorted(all_teachers, key=sort_functions[field])
+
+
+
 class DatabaseConnection:
     _instance = None
 
