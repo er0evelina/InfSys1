@@ -29,7 +29,7 @@ class TeacherRepository:
 
         return result
 
-    def sort_by_field(self, field: str = "last_name") -> bool:
+    def sort_by_field(self, field: str = "last_name") -> List[Teacher]:
         valid_fields = {
             'teacher_id': lambda t: t.teacher_id,
             'last_name': lambda t: t.last_name,
@@ -41,7 +41,7 @@ class TeacherRepository:
             raise ValueError(f"Недопустимое поле для сортировки: {field}")
 
         self._teachers.sort(key=valid_fields[field])
-        return True
+        return self._teachers.copy()
 
     def add_teacher(self, teacher_data: dict) -> Teacher:
         if self._teachers:
