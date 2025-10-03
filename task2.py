@@ -191,13 +191,26 @@ class TeacherRepYaml(TeacherRepository):
             yaml.dump(data, file, allow_unicode=True, default_flow_style=False, indent=2)
 
 
+class DatabaseConnection:
+    _instance = None
+
+    def __new__(cls, host: str, database: str, username: str, password: str, port: int = 5432):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._connection_string = f"host={host} dbname={database} user={username} password={password} port={port}"
+        return cls._instance
+
+    def get_connection(self):
+        return psycopg2.connect(self._connection_string)
+
+
 class TeacherRepDB:
     def __init__(self, host: str, database: str, username: str, password: str, port: int = 5432):
-        self._connection_string = f"host={host} dbname={database} user={username} password={password} port={port}"
+        self._db_connection = DatabaseConnection(host, database, username, password, port)
         self._create_table_if_not_exists()
 
     def _get_connection(self):
-        return psycopg2.connect(self._connection_string)
+        return self._db_connection.get_connection()
 
     def _create_table_if_not_exists(self):
         create_table_sql = """
@@ -332,3 +345,23 @@ class TeacherRepDB:
             cursor = conn.cursor()
             cursor.execute(sql)
             return cursor.fetchone()[0]
+
+    def get_all_teachers(self) -> List[Teacher]:
+        sql = "SELECT teacher_id, last_name, first_name, patronymic, academic_degree, administrative_position, experience_years FROM teachers ORDER BY teacher_id"
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            result = []
+            for row in rows:
+                teacher = Teacher(
+                    teacher_id=row[0],
+                    last_name=row[1],
+                    first_name=row[2],
+                    patronymic=row[3],
+                    academic_degree=row[4],
+                    administrative_position=row[5],
+                    experience_years=row[6]
+                )
+                result.append(teacher)
+            return result
