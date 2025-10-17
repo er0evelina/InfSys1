@@ -3,12 +3,18 @@ import json
 import yaml
 from task1 import Teacher
 import psycopg2
+from typing import Callable
 
 
 class TeacherRepository:
-    def __init__(self, filename: str = ""):
-        self._filename = filename
+    def __init__(self):
         self._teachers: List[Teacher] = []
+
+    def _load_from_file(self):
+        pass
+
+    def save_to_file(self):
+        pass
 
     def get_by_id(self, teacher_id: int) -> Teacher | None:
         for teacher in self._teachers:
@@ -16,16 +22,16 @@ class TeacherRepository:
                 return teacher
         return None
 
-    def get_k_n_short_list(self, k: int, n: int) -> List[str]:
+    def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
         start_index = (n - 1) * k
         end_index = start_index + k
 
         if start_index >= len(self._teachers):
-            return []
+            raise IndexError("start index out of range")
 
         result = []
         for teacher in self._teachers[start_index:end_index]:
-            result.append(teacher.short_info())
+            result.append(teacher)
 
         return result
 
@@ -88,13 +94,11 @@ class TeacherRepository:
     def get_count(self) -> int:
         return len(self._teachers)
 
-    def get_all_teachers(self) -> List[Teacher]:
-        return self._teachers.copy()
-
 
 class TeacherRepJson(TeacherRepository):
-    def __init__(self, filename: str = "teachers.json"):
-        super().__init__(filename)
+    def __init__(self, filename: str):
+        super().__init__()
+        self._filename = filename
         self._load_from_file()
 
     def _load_from_file(self):
@@ -141,8 +145,9 @@ class TeacherRepJson(TeacherRepository):
 
 
 class TeacherRepYaml(TeacherRepository):
-    def __init__(self, filename: str = "teachers.yaml"):
-        super().__init__(filename)
+    def __init__(self, filename: str):
+        super().__init__()
+        self._filename = filename
         self._load_from_file()
 
     def _load_from_file(self):
@@ -194,13 +199,13 @@ class TeacherRepYaml(TeacherRepository):
 
 class TeacherRepDBAdapter(TeacherRepository):
     def __init__(self, host: str, database: str, username: str, password: str, port: int = 5432):
-        super().__init__("")
+        super().__init__()
         self._db_repository = TeacherRepDB(host, database, username, password, port)
 
     def get_by_id(self, teacher_id: int) -> Teacher | None:
         return self._db_repository.get_by_id(teacher_id)
 
-    def get_k_n_short_list(self, k: int, n: int) -> List[str]:
+    def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
         return self._db_repository.get_k_n_short_list(k, n)
 
     def add_teacher(self, teacher_data: dict) -> Teacher:
@@ -215,11 +220,8 @@ class TeacherRepDBAdapter(TeacherRepository):
     def get_count(self) -> int:
         return self._db_repository.get_count()
 
-    def get_all_teachers(self) -> List[Teacher]:
-        return self._db_repository.get_all_teachers()
-
     def sort_by_field(self, field: str = "last_name") -> List[Teacher]:
-        all_teachers = self._db_repository.get_all_teachers()
+        all_teachers = self._db_repository.get_k_n_short_list(self._db_repository.get_count(), 1)
 
         sort_functions = {
             'teacher_id': lambda t: t.teacher_id,
@@ -241,7 +243,10 @@ class DatabaseConnection:
     def __new__(cls, host: str, database: str, username: str, password: str, port: int = 5432):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._connection_string = f"host={host} dbname={database} user={username} password={password} port={port}"
+            cls._instance._connection_string = (
+                f"host={host} dbname={database} user={username} "
+                f"password={password} port={port}"
+            )
         return cls._instance
 
     def get_connection(self):
@@ -274,7 +279,8 @@ class TeacherRepDB:
             conn.commit()
 
     def get_by_id(self, teacher_id: int) -> Teacher | None:
-        sql = "SELECT teacher_id, last_name, first_name, patronymic, academic_degree, administrative_position, experience_years FROM teachers WHERE teacher_id = %s"
+        sql = """SELECT teacher_id, last_name, first_name, patronymic, academic_degree,
+        administrative_position, experience_years FROM teachers WHERE teacher_id = %s"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(sql, (teacher_id,))
@@ -291,9 +297,9 @@ class TeacherRepDB:
                 )
         return None
 
-    def get_k_n_short_list(self, k: int, n: int) -> List[str]:
+    def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
         sql = """
-        SELECT teacher_id, last_name, first_name, patronymic, experience_years 
+        SELECT teacher_id, last_name, first_name, patronymic, academic_degree, administrative_position, experience_years 
         FROM teachers 
         ORDER BY teacher_id 
         LIMIT %s OFFSET %s
@@ -310,9 +316,13 @@ class TeacherRepDB:
                     last_name=row[1],
                     first_name=row[2],
                     patronymic=row[3],
-                    experience_years=row[4]
+                    academic_degree=row[4],
+                    administrative_position=row[5],
+                    experience_years=row[6]
                 )
-                result.append(teacher.short_info())
+                result.append(teacher)
+            if len(result) == 0:
+                raise IndexError("start index out of range")
             return result
 
     def add_teacher(self, teacher_data: dict) -> Teacher:
@@ -390,56 +400,77 @@ class TeacherRepDB:
             cursor.execute(sql)
             return cursor.fetchone()[0]
 
-    def get_all_teachers(self) -> List[Teacher]:
-        sql = "SELECT teacher_id, last_name, first_name, patronymic, academic_degree, administrative_position, experience_years FROM teachers ORDER BY teacher_id"
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            result = []
-            for row in rows:
-                teacher = Teacher(
-                    teacher_id=row[0],
-                    last_name=row[1],
-                    first_name=row[2],
-                    patronymic=row[3],
-                    academic_degree=row[4],
-                    administrative_position=row[5],
-                    experience_years=row[6]
-                )
-                result.append(teacher)
-            return result
 
 
-
-class FilterSortDecorator:
-    def __init__(self, repository: TeacherRepository):
+class FilterDecorator:
+    def __init__(self, repository: TeacherRepository, filter_func: Callable | None):
         self._repository = repository
+        self._filter_func: Callable = filter_func
 
-    def get_k_n_short_list(self, k: int, n: int, filter_func: Callable = None, sort_func: Callable = None) -> List[str]:
-        teachers = self._repository.get_all_teachers()
+    def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
+        teachers = self._repository.get_k_n_short_list(self._repository.get_count(), 1)
 
-        if filter_func:
-            teachers = [t for t in teachers if filter_func(t)]
-
-        if sort_func:
-            teachers = sorted(teachers, key=sort_func)
+        if self._filter_func:
+            teachers = [t for t in teachers if self._filter_func(t)]
 
         start_index = (n - 1) * k
         end_index = start_index + k
 
         if start_index >= len(teachers):
-            return []
+            raise IndexError("start index out of range")
 
-        return [teacher.short_info() for teacher in teachers[start_index:end_index]]
+        return [teacher for teacher in teachers[start_index:end_index]]
 
-    def get_count(self, filter_func: Callable = None) -> int:
-        teachers = self._repository.get_all_teachers()
+    def get_count(self) -> int:
+        teachers = self._repository.get_k_n_short_list(self._repository.get_count(), 1)
 
-        if filter_func:
-            teachers = [t for t in teachers if filter_func(t)]
+        if self._filter_func:
+            teachers = [t for t in teachers if self._filter_func(t)]
 
         return len(teachers)
 
-    def __getattr__(self, name):
-        return getattr(self._repository, name)
+    @property
+    def filter_func(self) -> Callable:
+        return self._filter_func
+
+    @filter_func.setter
+    def filter_func(self, func):
+        self._filter_func = func
+
+
+
+class SortDecorator:
+    def __init__(
+            self, repository: TeacherRepository,
+            sort_func: Callable | None, reverse: bool = False
+    ):
+        self._repository = repository
+        self._sort_func: Callable = sort_func
+        self._reverse: bool = reverse
+
+    def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
+        teachers = self._repository.get_k_n_short_list(self._repository.get_count(), 1)
+
+        if self._sort_func:
+            teachers = sorted(teachers, key=self._sort_func, reverse=self._reverse)
+        elif self._reverse:
+            teachers.reverse()
+
+        start_index = (n - 1) * k
+        end_index = start_index + k
+
+        if start_index >= len(teachers):
+            raise IndexError("start index out of range")
+
+        return [teacher for teacher in teachers[start_index:end_index]]
+
+    def get_count(self):
+        return self._repository.get_count()
+
+    @property
+    def sort_func(self) -> Callable:
+        return self._sort_func
+
+    @sort_func.setter
+    def sort_func(self, func):
+        self._sort_func = func
