@@ -1,28 +1,34 @@
-from typing import List
+"""Модуль для работы с репозиториями преподавателей."""
+from typing import List, Callable
 import json
 import yaml
-from task1 import Teacher
 import psycopg2
-from typing import Callable
+from task1 import Teacher
+
 
 
 class TeacherRepository:
+    """Базовый класс репозитория преподавателей."""
+
     def __init__(self):
+        """Инициализирует репозиторий."""
         self._teachers: List[Teacher] = []
 
     def _load_from_file(self):
-        pass
+        """Загружает данные из файла."""
 
     def save_to_file(self):
-        pass
+        """Сохраняет данные в файл."""
 
     def get_by_id(self, teacher_id: int) -> Teacher | None:
+        """Возвращает преподавателя по ID."""
         for teacher in self._teachers:
             if teacher.teacher_id == teacher_id:
                 return teacher
         return None
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
+        """Возвращает список преподавателей с пагинацией."""
         start_index = (n - 1) * k
         end_index = start_index + k
 
@@ -36,6 +42,7 @@ class TeacherRepository:
         return result
 
     def sort_by_field(self, field: str = "last_name") -> List[Teacher]:
+        """Сортирует преподавателей по указанному полю."""
         valid_fields = {
             'teacher_id': lambda t: t.teacher_id,
             'last_name': lambda t: t.last_name,
@@ -50,6 +57,7 @@ class TeacherRepository:
         return self._teachers.copy()
 
     def add_teacher(self, teacher_data: dict) -> Teacher:
+        """Добавляет нового преподавателя."""
         if self._teachers:
             new_id = max(teacher.teacher_id for teacher in self._teachers) + 1
         else:
@@ -69,6 +77,7 @@ class TeacherRepository:
         return teacher
 
     def update_teacher(self, teacher_id: int, teacher_data: dict) -> Teacher | None:
+        """Обновляет данные преподавателя."""
         for i, teacher in enumerate(self._teachers):
             if teacher.teacher_id == teacher_id:
                 updated_teacher = Teacher(
@@ -85,6 +94,7 @@ class TeacherRepository:
         return None
 
     def delete_teacher(self, teacher_id: int) -> bool:
+        """Удаляет преподавателя по ID."""
         for i, teacher in enumerate(self._teachers):
             if teacher.teacher_id == teacher_id:
                 del self._teachers[i]
@@ -92,16 +102,21 @@ class TeacherRepository:
         return False
 
     def get_count(self) -> int:
+        """Возвращает количество преподавателей."""
         return len(self._teachers)
 
 
 class TeacherRepJson(TeacherRepository):
+    """Реализация репозитория для JSON формата."""
+
     def __init__(self, filename: str):
+        """Инициализирует JSON репозиторий."""
         super().__init__()
         self._filename = filename
         self._load_from_file()
 
     def _load_from_file(self):
+        """Загружает данные из JSON файла."""
         try:
             with open(self._filename, 'r', encoding='utf-8') as file:
                 data = json.load(file)
@@ -127,6 +142,7 @@ class TeacherRepJson(TeacherRepository):
             self._teachers = []
 
     def save_to_file(self):
+        """Сохраняет данные в JSON файл."""
         data = []
         for teacher in self._teachers:
             teacher_data = {
@@ -145,12 +161,16 @@ class TeacherRepJson(TeacherRepository):
 
 
 class TeacherRepYaml(TeacherRepository):
+    """Реализация репозитория для YAML формата."""
+
     def __init__(self, filename: str):
+        """Инициализирует YAML репозиторий."""
         super().__init__()
         self._filename = filename
         self._load_from_file()
 
     def _load_from_file(self):
+        """Загружает данные из YAML файла."""
         try:
             with open(self._filename, 'r', encoding='utf-8') as file:
                 data = yaml.safe_load(file)
@@ -180,6 +200,7 @@ class TeacherRepYaml(TeacherRepository):
             self._teachers = []
 
     def save_to_file(self):
+        """Сохраняет данные в YAML файл."""
         data = []
         for teacher in self._teachers:
             teacher_data = {
@@ -198,30 +219,42 @@ class TeacherRepYaml(TeacherRepository):
 
 
 class TeacherRepDBAdapter(TeacherRepository):
+    """Адаптер для работы с базой данных."""
+
     def __init__(self, host: str, database: str, username: str, password: str, port: int = 5432):
+        """Инициализирует адаптер БД."""
         super().__init__()
         self._db_repository = TeacherRepDB(host, database, username, password, port)
 
     def get_by_id(self, teacher_id: int) -> Teacher | None:
+        """Возвращает преподавателя по ID из БД."""
         return self._db_repository.get_by_id(teacher_id)
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
+        """Возвращает список преподавателей с пагинацией из БД."""
         return self._db_repository.get_k_n_short_list(k, n)
 
     def add_teacher(self, teacher_data: dict) -> Teacher:
+        """Добавляет нового преподавателя в БД."""
         return self._db_repository.add_teacher(teacher_data)
 
     def update_teacher(self, teacher_id: int, teacher_data: dict) -> Teacher | None:
+        """Обновляет данные преподавателя в БД."""
         return self._db_repository.update_teacher(teacher_id, teacher_data)
 
     def delete_teacher(self, teacher_id: int) -> bool:
+        """Удаляет преподавателя по ID из БД."""
         return self._db_repository.delete_teacher(teacher_id)
 
     def get_count(self) -> int:
+        """Возвращает количество преподавателей из БД."""
         return self._db_repository.get_count()
 
     def sort_by_field(self, field: str = "last_name") -> List[Teacher]:
-        all_teachers = self._db_repository.get_k_n_short_list(self._db_repository.get_count(), 1)
+        """Сортирует преподавателей по указанному полю из БД."""
+        all_teachers = self._db_repository.get_k_n_short_list(
+            self._db_repository.get_count(), 1
+        )
 
         sort_functions = {
             'teacher_id': lambda t: t.teacher_id,
@@ -236,32 +269,43 @@ class TeacherRepDBAdapter(TeacherRepository):
         return sorted(all_teachers, key=sort_functions[field])
 
 
-
 class DatabaseConnection:
+    """Класс для управления подключением к базе данных (Singleton)."""
     _instance = None
 
-    def __new__(cls, host: str, database: str, username: str, password: str, port: int = 5432):
+    def __new__(cls, *args, **kwargs):
+        """Создает единственный экземпляр класса."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._connection_string = (
+        return cls._instance
+
+    def __init__(self, host: str, database: str, username: str, password: str, port: int = 5432):
+        """Инициализирует подключение к базе данных."""
+        if not hasattr(self, '_connection_string'):
+            self._connection_string = (
                 f"host={host} dbname={database} user={username} "
                 f"password={password} port={port}"
             )
-        return cls._instance
 
     def get_connection(self):
+        """Возвращает соединение с базой данных."""
         return psycopg2.connect(self._connection_string)
 
 
 class TeacherRepDB:
+    """Реализация репозитория для работы с базой данных."""
+
     def __init__(self, host: str, database: str, username: str, password: str, port: int = 5432):
+        """Инициализирует репозиторий БД."""
         self._db_connection = DatabaseConnection(host, database, username, password, port)
         self._create_table_if_not_exists()
 
     def _get_connection(self):
+        """Возвращает соединение с БД."""
         return self._db_connection.get_connection()
 
     def _create_table_if_not_exists(self):
+        """Создает таблицу, если она не существует."""
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS teachers (
             teacher_id SERIAL PRIMARY KEY,
@@ -279,6 +323,7 @@ class TeacherRepDB:
             conn.commit()
 
     def get_by_id(self, teacher_id: int) -> Teacher | None:
+        """Возвращает преподавателя по ID из БД."""
         sql = """SELECT teacher_id, last_name, first_name, patronymic, academic_degree,
         administrative_position, experience_years FROM teachers WHERE teacher_id = %s"""
         with self._get_connection() as conn:
@@ -298,8 +343,10 @@ class TeacherRepDB:
         return None
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
+        """Возвращает список преподавателей с пагинацией из БД."""
         sql = """
-        SELECT teacher_id, last_name, first_name, patronymic, academic_degree, administrative_position, experience_years 
+        SELECT teacher_id, last_name, first_name, patronymic, academic_degree, 
+        administrative_position, experience_years 
         FROM teachers 
         ORDER BY teacher_id 
         LIMIT %s OFFSET %s
@@ -326,8 +373,10 @@ class TeacherRepDB:
             return result
 
     def add_teacher(self, teacher_data: dict) -> Teacher:
+        """Добавляет нового преподавателя в БД."""
         sql = """
-        INSERT INTO teachers (last_name, first_name, patronymic, academic_degree, administrative_position, experience_years)
+        INSERT INTO teachers (last_name, first_name, patronymic, 
+        academic_degree, administrative_position, experience_years)
         VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING teacher_id
         """
@@ -355,9 +404,11 @@ class TeacherRepDB:
             )
 
     def update_teacher(self, teacher_id: int, teacher_data: dict) -> Teacher | None:
+        """Обновляет данные преподавателя в БД."""
         sql = """
         UPDATE teachers 
-        SET last_name = %s, first_name = %s, patronymic = %s, academic_degree = %s, administrative_position = %s, experience_years = %s
+        SET last_name = %s, first_name = %s, patronymic = %s, 
+        academic_degree = %s, administrative_position = %s, experience_years = %s
         WHERE teacher_id = %s
         """
         with self._get_connection() as conn:
@@ -385,6 +436,7 @@ class TeacherRepDB:
         return None
 
     def delete_teacher(self, teacher_id: int) -> bool:
+        """Удаляет преподавателя по ID из БД."""
         sql = "DELETE FROM teachers WHERE teacher_id = %s"
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -394,6 +446,7 @@ class TeacherRepDB:
             return deleted
 
     def get_count(self) -> int:
+        """Возвращает количество преподавателей в БД."""
         sql = "SELECT COUNT(*) as count FROM teachers"
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -401,13 +454,16 @@ class TeacherRepDB:
             return cursor.fetchone()[0]
 
 
-
 class FilterDecorator:
+    """Декоратор для фильтрации преподавателей."""
+
     def __init__(self, repository: TeacherRepository, filter_func: Callable | None):
+        """Инициализирует декоратор фильтра."""
         self._repository = repository
         self._filter_func: Callable = filter_func
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
+        """Возвращает отфильтрованный список с пагинацией."""
         teachers = self._repository.get_k_n_short_list(self._repository.get_count(), 1)
 
         if self._filter_func:
@@ -419,9 +475,10 @@ class FilterDecorator:
         if start_index >= len(teachers):
             raise IndexError("start index out of range")
 
-        return [teacher for teacher in teachers[start_index:end_index]]
+        return list(teachers[start_index:end_index])
 
     def get_count(self) -> int:
+        """Возвращает количество отфильтрованных преподавателей."""
         teachers = self._repository.get_k_n_short_list(self._repository.get_count(), 1)
 
         if self._filter_func:
@@ -431,24 +488,29 @@ class FilterDecorator:
 
     @property
     def filter_func(self) -> Callable:
+        """Возвращает функцию фильтрации."""
         return self._filter_func
 
     @filter_func.setter
     def filter_func(self, func):
+        """Устанавливает функцию фильтрации."""
         self._filter_func = func
 
 
-
 class SortDecorator:
+    """Декоратор для сортировки преподавателей."""
+
     def __init__(
             self, repository: TeacherRepository,
             sort_func: Callable | None, reverse: bool = False
     ):
+        """Инициализирует декоратор сортировки."""
         self._repository = repository
         self._sort_func: Callable = sort_func
         self._reverse: bool = reverse
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
+        """Возвращает отсортированный список с пагинацией."""
         teachers = self._repository.get_k_n_short_list(self._repository.get_count(), 1)
 
         if self._sort_func:
@@ -462,15 +524,18 @@ class SortDecorator:
         if start_index >= len(teachers):
             raise IndexError("start index out of range")
 
-        return [teacher for teacher in teachers[start_index:end_index]]
+        return list(teachers[start_index:end_index])
 
     def get_count(self):
+        """Возвращает количество преподавателей."""
         return self._repository.get_count()
 
     @property
     def sort_func(self) -> Callable:
+        """Возвращает функцию сортировки."""
         return self._sort_func
 
     @sort_func.setter
     def sort_func(self, func):
+        """Устанавливает функцию сортировки."""
         self._sort_func = func
