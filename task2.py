@@ -460,7 +460,7 @@ class FilterDecorator:
     def __init__(self, repository: TeacherRepository, filter_func: Callable | None):
         """Инициализирует декоратор фильтра."""
         self._repository = repository
-        self._filter_func: Callable = filter_func
+        self._filter_func = filter_func
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
         """Возвращает отфильтрованный список с пагинацией."""
@@ -506,7 +506,7 @@ class SortDecorator:
     ):
         """Инициализирует декоратор сортировки."""
         self._repository = repository
-        self._sort_func: Callable = sort_func
+        self._sort_func = sort_func
         self._reverse: bool = reverse
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
