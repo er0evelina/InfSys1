@@ -4,11 +4,12 @@ from xml.etree import ElementTree as ET
 
 
 class Employee:
-    def __init__(self, employee_id: int, last_name: str, first_name: str, experience_years: int = 0):
+    def __init__(self, employee_id: int, last_name: str, first_name: str, experience_years: int = 0, snils: str = None):
         self._employee_id = self.validate_employee_id(employee_id)
         self._last_name = self.validate_name(last_name, "Last name")
         self._first_name = self.validate_name(first_name, "First name")
         self._experience_years = self.validate_experience_years(experience_years)
+        self._snils = self.validate_snils(snils)
 
     @staticmethod
     def validate_employee_id(employee_id: int) -> int:
@@ -39,9 +40,63 @@ class Employee:
 
     @staticmethod
     def validate_experience_years(experience_years: int) -> int:
+        """
+        Проверка снилс
+
+
+        """
+
         if not isinstance(experience_years, int) or experience_years < 0:
             raise ValueError("Experience years must be a non-negative integer")
         return experience_years
+
+    @staticmethod
+    def validate_snils(snils: str) -> str:
+        if snils is None:
+            raise ValueError("SNILS cannot be None")
+
+        if not isinstance(snils, str):
+            raise ValueError("SNILS must be a string")
+
+        snils_clean = snils.strip()
+
+        pattern1 = r'^\d{11}$'  # Формат "12345678964"
+        pattern2 = r'^\d{3}-\d{3}-\d{3} \d{2}$'  # Формат "123-456-789 64"
+
+        if not (re.match(pattern1, snils_clean) or re.match(pattern2, snils_clean)):
+            raise ValueError("SNILS must be in format '12345678964' or '123-456-789 64'")
+
+        digits_only = re.sub(r'\D', '', snils_clean)
+
+        if len(digits_only) != 11:
+            raise ValueError("SNILS must contain exactly 11 digits")
+
+        Employee._validate_snils_checksum(digits_only)
+
+        return digits_only
+
+    @staticmethod
+    def _validate_snils_checksum(snils_digits: str) -> None:
+        """Проверка контрольной суммы СНИЛС"""
+
+        base_number = snils_digits[:9]
+        check_number = int(snils_digits[9:])
+
+
+        if int(base_number) < 1001998:
+            return
+
+        total = 0
+        for i, digit in enumerate(base_number):
+            weight = 9 - i
+            total += int(digit) * weight
+
+        control_sum = total % 101
+        if control_sum == 100:
+            control_sum = 0
+
+        if control_sum != check_number:
+            raise ValueError("Invalid SNILS checksum")
 
     @property
     def employee_id(self) -> int:
@@ -59,6 +114,10 @@ class Employee:
     def experience_years(self) -> int:
         return self._experience_years
 
+    @property
+    def snils(self) -> str:
+        return self._snils
+
     @employee_id.setter
     def employee_id(self, value: int):
         self._employee_id = self.validate_employee_id(value)
@@ -74,6 +133,12 @@ class Employee:
     @experience_years.setter
     def experience_years(self, value: int):
         self._experience_years = self.validate_experience_years(value)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Teacher):
+            return False
+
+        return self._snils == other._snils
 
 
 class Teacher(Employee):
@@ -98,20 +163,24 @@ class Teacher(Employee):
                 'patronymic': kwargs.get('patronymic', args[3] if len(args) > 3 else None),
                 'academic_degree': kwargs.get('academic_degree', args[4] if len(args) > 4 else None),
                 'administrative_position': kwargs.get('administrative_position', args[5] if len(args) > 5 else None),
-                'experience_years': kwargs.get('experience_years', args[6] if len(args) > 6 else 0)
+                'experience_years': kwargs.get('experience_years', args[6] if len(args) > 6 else 0),
+                'snils': kwargs.get('snils', args[7] if len(args) > 7 else None)
             }
 
-        super().__init__(params['teacher_id'], params['last_name'], params['first_name'], params['experience_years'])
+        super().__init__(params['teacher_id'], params['last_name'], params['first_name'], params['experience_years'],
+                         params['snils'])
 
         self._patronymic = Employee.validate_name(params.get('patronymic'), "patronymic", True)
         self._academic_degree = Teacher.validate_optional_string(params.get('academic_degree'), "academic_degree")
         self._administrative_position = Teacher.validate_optional_string(params.get('administrative_position'),
                                                                          "administrative_degree")
+
     @staticmethod
     def _parse_string(data_string):
         parts = data_string.split(';')
-        if len(parts) != 7:
-            raise ValueError("String format must be: id;last_name;first_name;patronymic;degree;position;experience")
+        if len(parts) != 8:
+            raise ValueError(
+                "String format must be: id;last_name;first_name;patronymic;degree;position;experience;snils")
 
         try:
             teacher_id = int(parts[0])
@@ -126,7 +195,8 @@ class Teacher(Employee):
             'patronymic': parts[3] if parts[3] != '' else None,
             'academic_degree': parts[4] if parts[4] != '' else None,
             'administrative_position': parts[5] if parts[5] != '' else None,
-            'experience_years': experience_years
+            'experience_years': experience_years,
+            'snils': parts[7] if parts[7] != '' else None
         }
 
     @staticmethod
@@ -151,7 +221,8 @@ class Teacher(Employee):
             'patronymic': data.get('patronymic'),
             'academic_degree': data.get('academic_degree'),
             'administrative_position': data.get('administrative_position'),
-            'experience_years': data.get('experience_years', 0)
+            'experience_years': data.get('experience_years', 0),
+            'snils': data.get('snils')
         }
 
     @staticmethod
@@ -172,7 +243,7 @@ class Teacher(Employee):
                 raise ValueError(f"Missing required field in XML: {field}")
             data[field] = element.text
 
-        optional_fields = ['patronymic', 'academic_degree', 'administrative_position', 'experience_years']
+        optional_fields = ['patronymic', 'academic_degree', 'administrative_position', 'experience_years', 'snils']
         for field in optional_fields:
             element = root.find(field)
             if element is not None and element.text is not None:
@@ -191,9 +262,9 @@ class Teacher(Employee):
             'patronymic': data.get('patronymic'),
             'academic_degree': data.get('academic_degree'),
             'administrative_position': data.get('administrative_position'),
-            'experience_years': experience_years
+            'experience_years': experience_years,
+            'snils': data.get('snils')
         }
-    
 
     @staticmethod
     def validate_optional_string(value: str | None, field_name: str) -> str | None:
@@ -269,29 +340,17 @@ class Teacher(Employee):
             parts.append(f"Должность: {self._administrative_position}")
 
         parts.append(f"Стаж: {self._experience_years} лет")
+        parts.append(f"СНИЛС: {self._snils}")
 
         return ", ".join(parts)
 
     def __str__(self) -> str:
-        return f"Teacher {self.teacher_id}: {self.get_full_name()}, Experience: {self._experience_years} years"
+        return f"Teacher {self.teacher_id}: {self.get_full_name()}, SNILS: {self._snils}, Experience: {self._experience_years} years"
 
     def __repr__(self) -> str:
         return (f"Teacher(teacher_id={self._employee_id}, last_name='{self._last_name}', "
                 f"first_name='{self._first_name}', patronymic='{self._patronymic}', "
                 f"academic_degree='{self._academic_degree}', "
                 f"administrative_position='{self._administrative_position}', "
-                f"experience_years={self._experience_years})")
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Teacher):
-            return False
-
-        return (self._employee_id == other._employee_id and
-                self._last_name == other._last_name and
-                self._first_name == other._first_name and
-                self._patronymic == other._patronymic and
-                self._academic_degree == other._academic_degree and
-                self._administrative_position == other._administrative_position and
-                self._experience_years == other._experience_years)
-
+                f"experience_years={self._experience_years}, snils='{self._snils}')")
 
