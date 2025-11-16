@@ -27,6 +27,13 @@ class TeacherRepository:
                 return teacher
         return None
 
+    def get_by_snils(self, snils: str) -> Teacher | None:
+        """Возвращает преподавателя по СНИЛС."""
+        for teacher in self._teachers:
+            if teacher.snils == snils:
+                return teacher
+        return None
+
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
         """Возвращает список преподавателей с пагинацией."""
         start_index = (n - 1) * k
@@ -47,7 +54,8 @@ class TeacherRepository:
             'teacher_id': lambda t: t.teacher_id,
             'last_name': lambda t: t.last_name,
             'first_name': lambda t: t.first_name,
-            'experience_years': lambda t: t.experience_years
+            'experience_years': lambda t: t.experience_years,
+            'snils': lambda t: t.snils
         }
 
         if field not in valid_fields:
@@ -63,6 +71,11 @@ class TeacherRepository:
         else:
             new_id = 1
 
+        # Проверка на уникальность СНИЛС
+        snils = teacher_data.get('snils')
+        if snils and self.get_by_snils(snils):
+            raise ValueError(f"Преподаватель с СНИЛС {snils} уже существует")
+
         teacher = Teacher(
             teacher_id=new_id,
             last_name=teacher_data['last_name'],
@@ -70,7 +83,8 @@ class TeacherRepository:
             patronymic=teacher_data.get('patronymic'),
             academic_degree=teacher_data.get('academic_degree'),
             administrative_position=teacher_data.get('administrative_position'),
-            experience_years=teacher_data.get('experience_years', 0)
+            experience_years=teacher_data.get('experience_years', 0),
+            snils=teacher_data.get('snils')
         )
 
         self._teachers.append(teacher)
@@ -80,6 +94,9 @@ class TeacherRepository:
         """Обновляет данные преподавателя."""
         for i, teacher in enumerate(self._teachers):
             if teacher.teacher_id == teacher_id:
+                # При обновлении СНИЛС не меняется, берем текущий
+                current_snils = teacher.snils
+
                 updated_teacher = Teacher(
                     teacher_id=teacher_id,
                     last_name=teacher_data['last_name'],
@@ -87,7 +104,8 @@ class TeacherRepository:
                     patronymic=teacher_data.get('patronymic'),
                     academic_degree=teacher_data.get('academic_degree'),
                     administrative_position=teacher_data.get('administrative_position'),
-                    experience_years=teacher_data.get('experience_years', 0)
+                    experience_years=teacher_data.get('experience_years', 0),
+                    snils=current_snils  # Сохраняем оригинальный СНИЛС
                 )
                 self._teachers[i] = updated_teacher
                 return updated_teacher
@@ -130,7 +148,8 @@ class TeacherRepJson(TeacherRepository):
                             patronymic=item.get('patronymic'),
                             academic_degree=item.get('academic_degree'),
                             administrative_position=item.get('administrative_position'),
-                            experience_years=item.get('experience_years', 0)
+                            experience_years=item.get('experience_years', 0),
+                            snils=item.get('snils')
                         )
                         self._teachers.append(teacher)
                     except (ValueError, KeyError) as e:
@@ -152,12 +171,14 @@ class TeacherRepJson(TeacherRepository):
                 'patronymic': teacher.patronymic,
                 'academic_degree': teacher.academic_degree,
                 'administrative_position': teacher.administrative_position,
-                'experience_years': teacher.experience_years
+                'experience_years': teacher.experience_years,
+                'snils': teacher.snils
             }
             data.append(teacher_data)
 
         with open(self._filename, 'w', encoding='utf-8') as file:
             json.dump(data, file, ensure_ascii=False, indent=2)
+
 
 
 class TeacherRepYaml(TeacherRepository):
@@ -188,7 +209,8 @@ class TeacherRepYaml(TeacherRepository):
                             patronymic=item.get('patronymic'),
                             academic_degree=item.get('academic_degree'),
                             administrative_position=item.get('administrative_position'),
-                            experience_years=item.get('experience_years', 0)
+                            experience_years=item.get('experience_years', 0),
+                            snils=item.get('snils')
                         )
                         self._teachers.append(teacher)
                     except (ValueError, KeyError) as e:
@@ -210,7 +232,8 @@ class TeacherRepYaml(TeacherRepository):
                 'patronymic': teacher.patronymic,
                 'academic_degree': teacher.academic_degree,
                 'administrative_position': teacher.administrative_position,
-                'experience_years': teacher.experience_years
+                'experience_years': teacher.experience_years,
+                'snils': teacher.snils
             }
             data.append(teacher_data)
 
@@ -229,6 +252,10 @@ class TeacherRepDBAdapter(TeacherRepository):
     def get_by_id(self, teacher_id: int) -> Teacher | None:
         """Возвращает преподавателя по ID из БД."""
         return self._db_repository.get_by_id(teacher_id)
+
+    def get_by_snils(self, snils: str) -> Teacher | None:
+        """Возвращает преподавателя по СНИЛС из БД."""
+        return self._db_repository.get_by_snils(snils)
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
         """Возвращает список преподавателей с пагинацией из БД."""
@@ -260,7 +287,8 @@ class TeacherRepDBAdapter(TeacherRepository):
             'teacher_id': lambda t: t.teacher_id,
             'last_name': lambda t: t.last_name,
             'first_name': lambda t: t.first_name,
-            'experience_years': lambda t: t.experience_years
+            'experience_years': lambda t: t.experience_years,
+            'snils': lambda t: t.snils
         }
 
         if field not in sort_functions:
@@ -314,7 +342,8 @@ class TeacherRepDB:
             patronymic VARCHAR(100),
             academic_degree VARCHAR(200),
             administrative_position VARCHAR(200),
-            experience_years INTEGER NOT NULL DEFAULT 0
+            experience_years INTEGER NOT NULL DEFAULT 0,
+            snils VARCHAR(11) UNIQUE
         )
         """
         with self._get_connection() as conn:
@@ -325,7 +354,7 @@ class TeacherRepDB:
     def get_by_id(self, teacher_id: int) -> Teacher | None:
         """Возвращает преподавателя по ID из БД."""
         sql = """SELECT teacher_id, last_name, first_name, patronymic, academic_degree,
-        administrative_position, experience_years FROM teachers WHERE teacher_id = %s"""
+        administrative_position, experience_years, snils FROM teachers WHERE teacher_id = %s"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(sql, (teacher_id,))
@@ -338,7 +367,29 @@ class TeacherRepDB:
                     patronymic=row[3],
                     academic_degree=row[4],
                     administrative_position=row[5],
-                    experience_years=row[6]
+                    experience_years=row[6],
+                    snils=row[7]
+                )
+        return None
+
+    def get_by_snils(self, snils: str) -> Teacher | None:
+        """Возвращает преподавателя по СНИЛС из БД."""
+        sql = """SELECT teacher_id, last_name, first_name, patronymic, academic_degree,
+        administrative_position, experience_years, snils FROM teachers WHERE snils = %s"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (snils,))
+            row = cursor.fetchone()
+            if row:
+                return Teacher(
+                    teacher_id=row[0],
+                    last_name=row[1],
+                    first_name=row[2],
+                    patronymic=row[3],
+                    academic_degree=row[4],
+                    administrative_position=row[5],
+                    experience_years=row[6],
+                    snils=row[7]
                 )
         return None
 
@@ -346,7 +397,7 @@ class TeacherRepDB:
         """Возвращает список преподавателей с пагинацией из БД."""
         sql = """
         SELECT teacher_id, last_name, first_name, patronymic, academic_degree, 
-        administrative_position, experience_years 
+        administrative_position, experience_years, snils
         FROM teachers 
         ORDER BY teacher_id 
         LIMIT %s OFFSET %s
@@ -365,7 +416,8 @@ class TeacherRepDB:
                     patronymic=row[3],
                     academic_degree=row[4],
                     administrative_position=row[5],
-                    experience_years=row[6]
+                    experience_years=row[6],
+                    snils=row[7]
                 )
                 result.append(teacher)
             if len(result) == 0:
@@ -376,10 +428,16 @@ class TeacherRepDB:
         """Добавляет нового преподавателя в БД."""
         sql = """
         INSERT INTO teachers (last_name, first_name, patronymic, 
-        academic_degree, administrative_position, experience_years)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        academic_degree, administrative_position, experience_years, snils)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING teacher_id
         """
+        snils = teacher_data.get('snils')
+
+        # Проверка на уникальность СНИЛС
+        if snils and self.get_by_snils(snils):
+            raise ValueError(f"Преподаватель с СНИЛС {snils} уже существует")
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(sql, (
@@ -388,7 +446,8 @@ class TeacherRepDB:
                 teacher_data.get('patronymic'),
                 teacher_data.get('academic_degree'),
                 teacher_data.get('administrative_position'),
-                teacher_data.get('experience_years', 0)
+                teacher_data.get('experience_years', 0),
+                snils
             ))
             new_id = cursor.fetchone()[0]
             conn.commit()
@@ -400,11 +459,17 @@ class TeacherRepDB:
                 patronymic=teacher_data.get('patronymic'),
                 academic_degree=teacher_data.get('academic_degree'),
                 administrative_position=teacher_data.get('administrative_position'),
-                experience_years=teacher_data.get('experience_years', 0)
+                experience_years=teacher_data.get('experience_years', 0),
+                snils=snils
             )
 
     def update_teacher(self, teacher_id: int, teacher_data: dict) -> Teacher | None:
         """Обновляет данные преподавателя в БД."""
+        # Получаем текущего преподавателя для сохранения СНИЛС
+        current_teacher = self.get_by_id(teacher_id)
+        if not current_teacher:
+            return None
+
         sql = """
         UPDATE teachers 
         SET last_name = %s, first_name = %s, patronymic = %s, 
@@ -431,7 +496,8 @@ class TeacherRepDB:
                     patronymic=teacher_data.get('patronymic'),
                     academic_degree=teacher_data.get('academic_degree'),
                     administrative_position=teacher_data.get('administrative_position'),
-                    experience_years=teacher_data.get('experience_years', 0)
+                    experience_years=teacher_data.get('experience_years', 0),
+                    snils=current_teacher.snils  # Сохраняем оригинальный СНИЛС
                 )
         return None
 
@@ -460,7 +526,7 @@ class FilterDecorator:
     def __init__(self, repository: TeacherRepository, filter_func: Callable | None):
         """Инициализирует декоратор фильтра."""
         self._repository = repository
-        self._filter_func = filter_func
+        self._filter_func: Callable = filter_func
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
         """Возвращает отфильтрованный список с пагинацией."""
@@ -506,7 +572,7 @@ class SortDecorator:
     ):
         """Инициализирует декоратор сортировки."""
         self._repository = repository
-        self._sort_func = sort_func
+        self._sort_func: Callable = sort_func
         self._reverse: bool = reverse
 
     def get_k_n_short_list(self, k: int, n: int) -> List[Teacher]:
