@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список преподавателей</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .teacher-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .teacher-item {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .empty-message {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Список преподавателей</h1>
+
+    {% if teachers %}
+        <ul class="teacher-list">
+            {% for teacher in teachers %}
+                <li class="teacher-item">
+                    <strong>{{ teacher.last_name }} {{ teacher.first_name }}</strong><br>
+                    {% if teacher.patronymic %}
+                        Отчество: {{ teacher.patronymic }}<br>
+                    {% endif %}
+                    ID: {{ teacher.teacher_id }}<br>
+                    СНИЛС: {{ teacher.snils }}<br>
+                    Стаж: {{ teacher.experience_years }} лет
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty-message">Список преподавателей пуст</p>
+    {% endif %}
+</body>
+</html>
