@@ -12,6 +12,17 @@
         h1 {
             color: #333;
         }
+        .repo-selector {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .repo-info {
+            margin: 10px 0;
+            color: #666;
+            font-style: italic;
+        }
         .teacher-list {
             list-style-type: none;
             padding: 0;
@@ -31,6 +42,20 @@
 </head>
 <body>
     <h1>Список преподавателей</h1>
+
+    <div class="repo-selector">
+        <form method="get" action="/">
+            <label for="repo_type">Выберите репозиторий:</label>
+            <select name="repo_type" id="repo_type" onchange="this.form.submit()">
+                {% for repo_type in repo_types %}
+                    <option value="{{ repo_type }}" {% if repo_type == current_repo_type %}selected{% endif %}>
+                        {{ repo_type|upper }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+        <div class="repo-info">{{ repo_info }}</div>
+    </div>
 
     {% if teachers %}
         <ul class="teacher-list">
