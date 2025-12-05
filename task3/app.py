@@ -55,10 +55,17 @@ def index():
     if request.args.get('max_experience'):
         filter_params['max_experience'] = request.args.get('max_experience')
     
-    # Загружаем преподавателей с фильтрацией
-    teacher_controller.load_teachers(filter_params)
+    # Получаем параметры сортировки
+    sort_params = {}
+    if request.args.get('sort'):
+        sort_params['field'] = request.args.get('sort')
+    if request.args.get('order') == 'desc':
+        sort_params['reverse'] = True
     
-    # Передаем параметры фильтрации в шаблон
+    # Загружаем преподавателей с фильтрацией и сортировкой
+    teacher_controller.load_teachers(filter_params, sort_params)
+    
+    # Передаем параметры в шаблон
     return teacher_view.render()
 
 
