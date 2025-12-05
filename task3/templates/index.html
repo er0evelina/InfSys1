@@ -5,6 +5,7 @@
 {% block content %}
     <h1>Список преподавателей <span class="count-badge">{{ teachers|length }}</span></h1>
     
+    <!-- Форма выбора репозитория -->
     <div class="repo-selector">
         <form action="{{ url_for('change_repo') }}" method="post">
             <label for="repo_type">Текущее хранилище:</label>
@@ -16,7 +17,71 @@
             <button type="submit">Переключить хранилище</button>
         </form>
     </div>
-    
+
+    <!-- Форма фильтрации -->
+    <div class="filter-form" style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
+        <h3 style="margin-top: 0; margin-bottom: 15px;">Фильтрация</h3>
+        <form method="GET" action="{{ url_for('index') }}" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <div>
+                <label for="last_name" style="font-size: 12px;">Фамилия:</label>
+                <input type="text" id="last_name" name="last_name"
+                       value="{{ request_args.get('last_name', '') }}"
+                       style="width: 100%; padding: 6px; font-size: 14px;">
+            </div>
+
+            <div>
+                <label for="first_name" style="font-size: 12px;">Имя:</label>
+                <input type="text" id="first_name" name="first_name"
+                       value="{{ request_args.get('first_name', '') }}"
+                       style="width: 100%; padding: 6px; font-size: 14px;">
+            </div>
+
+            <div>
+                <label for="patronymic" style="font-size: 12px;">Отчество:</label>
+                <input type="text" id="patronymic" name="patronymic"
+                       value="{{ request_args.get('patronymic', '') }}"
+                       style="width: 100%; padding: 6px; font-size: 14px;">
+            </div>
+
+            <div>
+                <label for="position" style="font-size: 12px;">Должность:</label>
+                <input type="text" id="position" name="position"
+                       value="{{ request_args.get('position', '') }}"
+                       style="width: 100%; padding: 6px; font-size: 14px;">
+            </div>
+
+            <div>
+                <label for="academic_degree" style="font-size: 12px;">Ученая степень:</label>
+                <input type="text" id="academic_degree" name="academic_degree"
+                       value="{{ request_args.get('academic_degree', '') }}"
+                       style="width: 100%; padding: 6px; font-size: 14px;">
+            </div>
+
+            <div>
+                <label for="min_experience" style="font-size: 12px;">Мин. стаж:</label>
+                <input type="number" id="min_experience" name="min_experience" min="0"
+                       value="{{ request_args.get('min_experience', '') }}"
+                       style="width: 100%; padding: 6px; font-size: 14px;">
+            </div>
+
+            <div>
+                <label for="max_experience" style="font-size: 12px;">Макс. стаж:</label>
+                <input type="number" id="max_experience" name="max_experience" min="0"
+                       value="{{ request_args.get('max_experience', '') }}"
+                       style="width: 100%; padding: 6px; font-size: 14px;">
+            </div>
+
+            <div style="display: flex; align-items: end; gap: 10px;">
+                <button type="submit" style="padding: 6px 12px; background-color: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                    Применить
+                </button>
+                <a href="{{ url_for('index') }}" style="padding: 6px 12px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">
+                    Сбросить
+                </a>
+            </div>
+        </form>
+    </div>
+
     {% if teachers %}
         <table class="teacher-table">
             <thead>
@@ -71,7 +136,11 @@
         </table>
     {% else %}
         <div class="empty-message">
-            В хранилище нет преподавателей
+            {% if request_args %}
+                Преподаватели по заданным критериям не найдены
+            {% else %}
+                В хранилище нет преподавателей
+            {% endif %}
         </div>
     {% endif %}
 
@@ -83,7 +152,7 @@
             font-size: 14px;
             border: 1px solid #e0e0e0;
         }
-        
+
         .teacher-table th {
             background-color: #f8f9fa;
             color: #333;
@@ -93,46 +162,46 @@
             border-bottom: 2px solid #dee2e6;
             border-right: 1px solid #e0e0e0;
         }
-        
+
         .teacher-table th:last-child {
             border-right: none;
         }
-        
+
         .teacher-table td {
             padding: 10px 15px;
             border-bottom: 1px solid #e0e0e0;
             border-right: 1px solid #f0f0f0;
             vertical-align: top;
         }
-        
+
         .teacher-table td:last-child {
             border-right: none;
         }
-        
+
         .teacher-table tr:last-child td {
             border-bottom: none;
         }
-        
+
         .teacher-table tr:hover {
             background-color: #f8f9fa;
         }
-        
+
         .teacher-name {
             font-weight: 600;
             color: #333;
             margin-bottom: 3px;
         }
-        
+
         .teacher-patronymic {
             font-size: 12px;
             color: #666;
         }
-        
+
         .position, .degree {
             font-size: 13px;
             line-height: 1.4;
         }
-        
+
         .experience {
             display: inline-block;
             background-color: #e8f4ff;
@@ -142,22 +211,22 @@
             font-size: 12px;
             font-weight: 500;
         }
-        
+
         .snils {
             font-family: 'Courier New', monospace;
             font-size: 13px;
             color: #555;
         }
-        
+
         .empty {
             color: #999;
             font-style: italic;
         }
-        
+
         .text-center {
             text-align: center;
         }
-        
+
         .count-badge {
             display: inline-block;
             background-color: #28a745;
@@ -167,7 +236,7 @@
             font-size: 14px;
             margin-left: 10px;
         }
-        
+
         .repo-selector {
             background-color: #f8f9fa;
             padding: 15px;
@@ -175,20 +244,20 @@
             margin-bottom: 20px;
             border: 1px solid #e0e0e0;
         }
-        
+
         .repo-selector form {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
+
         .repo-selector select {
             padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
         }
-        
+
         .repo-selector button {
             padding: 8px 16px;
             background-color: #007bff;
@@ -198,7 +267,7 @@
             cursor: pointer;
             font-size: 14px;
         }
-        
+
         .empty-message {
             text-align: center;
             padding: 40px;
