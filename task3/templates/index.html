@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Список преподавателей{% endblock %}
+
+{% block content %}
+    <h1>Список преподавателей <span class="count-badge">{{ teachers|length }}</span></h1>
+    
+    <div class="repo-selector">
+        <form action="{{ url_for('change_repo') }}" method="post">
+            <label for="repo_type">Текущее хранилище:</label>
+            <select name="repo_type" id="repo_type">
+                <option value="json" {% if session.get('repo_type', 'json') == 'json' %}selected{% endif %}>JSON файл</option>
+                <option value="yaml" {% if session.get('repo_type', 'json') == 'yaml' %}selected{% endif %}>YAML файл</option>
+                <option value="db" {% if session.get('repo_type', 'json') == 'db' %}selected{% endif %}>База данных</option>
+            </select>
+            <button type="submit">Переключить хранилище</button>
+        </form>
+    </div>
+    
+    {% if teachers %}
+        <table class="teacher-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>ФИО</th>
+                    <th>Должность</th>
+                    <th>Ученая степень</th>
+                    <th>Стаж</th>
+                    <th>СНИЛС</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for teacher in teachers %}
+                <tr onclick="window.location.href='{{ url_for('update_teacher_form', teacher_id=teacher.teacher_id) }}'" style="cursor: pointer;">
+                    <td class="text-center">{{ teacher.teacher_id }}</td>
+                    <td>
+                        <div class="teacher-name">
+                            {{ teacher.last_name }} {{ teacher.first_name }}
+                        </div>
+                        {% if teacher.patronymic %}
+                            <div class="teacher-patronymic">{{ teacher.patronymic }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if teacher.administrative_position %}
+                            <span class="position">{{ teacher.administrative_position }}</span>
+                        {% else %}
+                            <span class="empty">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if teacher.academic_degree %}
+                            <span class="degree">{{ teacher.academic_degree }}</span>
+                        {% else %}
+                            <span class="empty">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <span class="experience">{{ teacher.experience_years }} лет</span>
+                    </td>
+                    <td>
+                        {% if teacher.snils %}
+                            <span class="snils">{{ teacher.snils[:3] }}-{{ teacher.snils[3:6] }}-{{ teacher.snils[6:9] }} {{ teacher.snils[9:] }}</span>
+                        {% else %}
+                            <span class="empty">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-message">
+            В хранилище нет преподавателей
+        </div>
+    {% endif %}
+
+    <style>
+        .teacher-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .teacher-table th {
+            background-color: #f8f9fa;
+            color: #333;
+            font-weight: 600;
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 2px solid #dee2e6;
+            border-right: 1px solid #e0e0e0;
+        }
+        
+        .teacher-table th:last-child {
+            border-right: none;
+        }
+        
+        .teacher-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            border-right: 1px solid #f0f0f0;
+            vertical-align: top;
+        }
+        
+        .teacher-table td:last-child {
+            border-right: none;
+        }
+        
+        .teacher-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .teacher-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .teacher-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        
+        .teacher-patronymic {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .position, .degree {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .experience {
+            display: inline-block;
+            background-color: #e8f4ff;
+            color: #0066cc;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .snils {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .empty {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .count-badge {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .repo-selector {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .repo-selector form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .repo-selector select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .repo-selector button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+            background-color: #f8f9fa;
+            border: 1px dashed #ddd;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+{% endblock %}
