@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Добавить преподавателя{% endblock %}
+{% block title %}Редактировать преподавателя{% endblock %}
 
 {% block content %}
-    <h1>Добавить нового преподавателя</h1>
+    <h1>Редактировать преподавателя</h1>
 
     {% if error %}
         <div style="color: red; background-color: #ffe6e6; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
@@ -11,51 +11,131 @@
         </div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('add_teacher') }}">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-                <label for="last_name">Фамилия*:</label>
-                <input type="text" id="last_name" name="last_name" required style="width: 100%; padding: 8px; margin-top: 5px;">
+    {% if teacher or form_data or teacher_id %}
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+        <form method="POST" action="{{ url_for('update_teacher', teacher_id=teacher_id or (teacher.teacher_id if teacher else 0) or (form_data.teacher_id if form_data else 0)) }}" style="flex: 1;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label for="last_name">Фамилия*:</label>
+                    {% if teacher %}
+                        <input type="text" id="last_name" name="last_name"
+                               value="{{ teacher.last_name }}"
+                               required style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% elif form_data %}
+                        <input type="text" id="last_name" name="last_name"
+                               value="{{ form_data.last_name }}"
+                               required style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="first_name">Имя*:</label>
+                    {% if teacher %}
+                        <input type="text" id="first_name" name="first_name"
+                               value="{{ teacher.first_name }}"
+                               required style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% elif form_data %}
+                        <input type="text" id="first_name" name="first_name"
+                               value="{{ form_data.first_name }}"
+                               required style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="patronymic">Отчество:</label>
+                    {% if teacher %}
+                        <input type="text" id="patronymic" name="patronymic"
+                               value="{{ teacher.patronymic if teacher.patronymic else '' }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% elif form_data %}
+                        <input type="text" id="patronymic" name="patronymic"
+                               value="{{ form_data.patronymic if form_data.patronymic else '' }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="snils">СНИЛС:</label>
+                    {% if teacher and teacher.snils %}
+                        <input type="text" id="snils" name="snils"
+                               value="{{ teacher.snils[:3] + '-' + teacher.snils[3:6] + '-' + teacher.snils[6:9] + ' ' + teacher.snils[9:] }}"
+                               placeholder="123-456-789 01" style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% elif form_data and form_data.snils %}
+                        <input type="text" id="snils" name="snils"
+                               value="{{ form_data.snils }}"
+                               placeholder="123-456-789 01" style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% else %}
+                        <input type="text" id="snils" name="snils"
+                               placeholder="123-456-789 01" style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="academic_degree">Ученая степень:</label>
+                    {% if teacher %}
+                        <input type="text" id="academic_degree" name="academic_degree"
+                               value="{{ teacher.academic_degree if teacher.academic_degree else '' }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% elif form_data %}
+                        <input type="text" id="academic_degree" name="academic_degree"
+                               value="{{ form_data.academic_degree if form_data.academic_degree else '' }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="administrative_position">Должность:</label>
+                    {% if teacher %}
+                        <input type="text" id="administrative_position" name="administrative_position"
+                               value="{{ teacher.administrative_position if teacher.administrative_position else '' }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% elif form_data %}
+                        <input type="text" id="administrative_position" name="administrative_position"
+                               value="{{ form_data.administrative_position if form_data.administrative_position else '' }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="experience_years">Стаж (лет):</label>
+                    {% if teacher %}
+                        <input type="number" id="experience_years" name="experience_years" min="0"
+                               value="{{ teacher.experience_years }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% elif form_data %}
+                        <input type="number" id="experience_years" name="experience_years" min="0"
+                               value="{{ form_data.experience_years }}"
+                               style="width: 100%; padding: 8px; margin-top: 5px;">
+                    {% endif %}
+                </div>
             </div>
 
-            <div>
-                <label for="first_name">Имя*:</label>
-                <input type="text" id="first_name" name="first_name" required style="width: 100%; padding: 8px; margin-top: 5px;">
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Сохранить
+                </button>
+                <a href="{{ url_for('index') }}" style="padding: 10px 20px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">
+                    Отмена
+                </a>
             </div>
+        </form>
 
-            <div>
-                <label for="patronymic">Отчество:</label>
-                <input type="text" id="patronymic" name="patronymic" style="width: 100%; padding: 8px; margin-top: 5px;">
-            </div>
+        <div style="margin-left: 40px; padding: 20px; background-color: #f8f9fa; border-radius: 5px; border: 1px solid #e0e0e0;">
 
-            <div>
-                <label for="snils">СНИЛС:</label>
-                <input type="text" id="snils" name="snils" placeholder="123-456-789 01" style="width: 100%; padding: 8px; margin-top: 5px;">
-            </div>
-
-            <div>
-                <label for="academic_degree">Ученая степень:</label>
-                <input type="text" id="academic_degree" name="academic_degree" style="width: 100%; padding: 8px; margin-top: 5px;">
-            </div>
-
-            <div>
-                <label for="administrative_position">Должность:</label>
-                <input type="text" id="administrative_position" name="administrative_position" style="width: 100%; padding: 8px; margin-top: 5px;">
-            </div>
-
-            <div>
-                <label for="experience_years">Стаж (лет):</label>
-                <input type="number" id="experience_years" name="experience_years" min="0" value="0" style="width: 100%; padding: 8px; margin-top: 5px;">
-            </div>
+            <form method="POST" action="{{ url_for('delete_teacher', teacher_id=teacher_id or (teacher.teacher_id if teacher else 0) or (form_data.teacher_id if form_data else 0)) }}"
+                  onsubmit="return confirm('Вы уверены, что хотите удалить этого преподавателя?');">
+                <button type="submit" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                    Удалить преподавателя
+                </button>
+            </form>
         </div>
-
-        <div style="margin-top: 20px; display: flex; gap: 10px;">
-            <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                Добавить
-            </button>
-            <a href="{{ url_for('index') }}" style="padding: 10px 20px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">
-                Отмена
-            </a>
+    </div>
+    {% else %}
+        <div style="color: red; padding: 20px; text-align: center;">
+            Преподаватель не найден
         </div>
-    </form>
+        <a href="{{ url_for('index') }}" style="display: inline-block; padding: 10px 20px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">
+            Вернуться к списку
+        </a>
+    {% endif %}
 {% endblock %}
