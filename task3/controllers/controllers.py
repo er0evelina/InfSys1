@@ -63,3 +63,20 @@ class UpdateTeacherController(Subject, Controller):
                 self.update({"success": False, "error": "Преподаватель не найден"})
         except Exception as e:
             self.update({"success": False, "error": str(e)})
+
+
+class DeleteTeacherController(Subject, Controller):
+    def __init__(self, repository: TeacherRepository):
+        Subject.__init__(self)
+        Controller.__init__(self, repository)
+    
+    def delete_teacher(self, teacher_id):
+        try:
+            success = self._repository.delete_teacher(teacher_id)
+            if success:
+                self._repository.save_to_file()
+                self.update({"success": True, "teacher_id": teacher_id})
+            else:
+                self.update({"success": False, "error": "Преподаватель не найден"})
+        except Exception as e:
+            self.update({"success": False, "error": str(e)})
