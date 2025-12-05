@@ -73,26 +73,43 @@ class TeacherController(Subject, Controller):
 
         return filter_func
 
-    def load_teachers(self, filter_params=None):
-        """Загружает преподавателей с возможной фильтрацией"""
+    def _get_sort_func(self, sort_field, reverse=False):
+        """Создает функцию сортировки на основе переданных параметров"""
+        if not sort_field:
+            return None
+        
+        sort_functions = {
+            'teacher_id': lambda t: t.teacher_id,
+            'last_name': lambda t: t.last_name.lower(),
+            'first_name': lambda t: t.first_name.lower(),
+            'experience_years': lambda t: t.experience_years,
+            'snils': lambda t: t.snils if t.snils else ''
+        }
+        
+        return sort_functions.get(sort_field)
+    
+    def load_teachers(self, filter_params=None, sort_params=None):
+        """Загружает преподавателей с фильтрацией и сортировкой"""
         teachers_count = self._repository.get_count()
-
+        
         try:
-            # Создаем функцию фильтрации, если есть параметры
-            filter_func = None
+            # Применяем фильтрацию, если есть параметры
+            repository = self._repository
             if filter_params:
                 filter_func = self._get_filter_func(filter_params)
-
-            # Применяем фильтрацию, если есть функция
-            if filter_func:
-                repository = FilterDecorator(self._repository, filter_func)
-            else:
-                repository = self._repository
-
+                if filter_func:
+                    repository = FilterDecorator(repository, filter_func)
+            
+            # Применяем сортировку, если есть параметры
+            if sort_params and 'field' in sort_params:
+                sort_func = self._get_sort_func(sort_params['field'], sort_params.get('reverse', False))
+                if sort_func:
+                    repository = SortDecorator(repository, sort_func, sort_params.get('reverse', False))
+            
             teachers = repository.get_k_n_short_list(teachers_count, 1)
         except IndexError:
             teachers = []
-
+        
         self.update(teachers)
 
 
