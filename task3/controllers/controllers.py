@@ -1,43 +1,65 @@
 from models.repositories import TeacherRepository
-from typing import List
-from models.teacher import Teacher
-from observer import Subject
+from controllers.subject import Subject, Observer
 
 
-class TeacherController(Subject):
-    """Контроллер для работы с преподавателями"""
-
+class Controller:
     def __init__(self, repository: TeacherRepository):
-        super().__init__()
-        self.repository = repository
-        self._teachers: List[Teacher] = []
-        self._current_repo_type: str = ""
-        self._repo_info: str = ""
+        self._repository = repository
+    
+    def get_repo(self):
+        return self._repository
+    
+    def set_repo(self, repository: TeacherRepository):
+        self._repository = repository
 
-    def load_teachers(self, repo_type: str):
-        """Загружает преподавателей из репозитория и уведомляет наблюдателей"""
-        self._current_repo_type = repo_type
 
+class TeacherController(Subject, Controller):
+    def __init__(self, repository: TeacherRepository):
+        Subject.__init__(self)
+        Controller.__init__(self, repository)
+    
+    def load_teachers(self):
+        teachers_count = self._repository.get_count()
         try:
-            self._teachers = self.repository.get_k_n_short_list(self.repository.get_count(), 1)
+            teachers = self._repository.get_k_n_short_list(teachers_count, 1)
         except IndexError:
-            self._teachers = []
+            teachers = []
+        self.update(teachers)
 
-        repo_class = type(self.repository).__name__
-        count = self.repository.get_count()
-        self._repo_info = f"{repo_class} ({count} записей)"
 
-        # Уведомляем наблюдателей об изменениях
-        self.notify()
+class AddTeacherController(Subject, Controller):
+    def __init__(self, repository: TeacherRepository):
+        Subject.__init__(self)
+        Controller.__init__(self, repository)
+    
+    def add_teacher(self, teacher_data):
+        try:
+            teacher = self._repository.add_teacher(teacher_data)
+            self._repository.save_to_file()
+            self.update({"success": True, "teacher": teacher})
+        except Exception as e:
+            self.update({"success": False, "error": str(e)})
 
-    @property
-    def teachers(self) -> List[Teacher]:
-        return self._teachers
 
-    @property
-    def current_repo_type(self) -> str:
-        return self._current_repo_type
-
-    @property
-    def repo_info(self) -> str:
-        return self._repo_info
+class UpdateTeacherController(Subject, Controller):
+    def __init__(self, repository: TeacherRepository):
+        Subject.__init__(self)
+        Controller.__init__(self, repository)
+    
+    def get_teacher(self, teacher_id):
+        try:
+            teacher = self._repository.get_by_id(teacher_id)
+            self.update({"teacher": teacher})
+        except Exception as e:
+            self.update({"error": str(e)})
+    
+    def update_teacher(self, teacher_id, teacher_data):
+        try:
+            teacher = self._repository.update_teacher(teacher_id, teacher_data)
+            if teacher:
+                self._repository.save_to_file()
+                self.update({"success": True, "teacher": teacher})
+            else:
+                self.update({"success": False, "error": "Преподаватель не найден"})
+        except Exception as e:
+            self.update({"success": False, "error": str(e)})
