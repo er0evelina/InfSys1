@@ -34,7 +34,31 @@ def get_current_repo():
 
 @app.route('/')
 def index():
-    teacher_controller.load_teachers()
+    # Получаем параметры фильтрации из GET-запроса
+    filter_params = {}
+    
+    # Простые текстовые фильтры
+    if request.args.get('last_name'):
+        filter_params['last_name'] = request.args.get('last_name')
+    if request.args.get('first_name'):
+        filter_params['first_name'] = request.args.get('first_name')
+    if request.args.get('patronymic'):
+        filter_params['patronymic'] = request.args.get('patronymic')
+    if request.args.get('academic_degree'):
+        filter_params['academic_degree'] = request.args.get('academic_degree')
+    if request.args.get('position'):
+        filter_params['position'] = request.args.get('position')
+    
+    # Фильтры по стажу
+    if request.args.get('min_experience'):
+        filter_params['min_experience'] = request.args.get('min_experience')
+    if request.args.get('max_experience'):
+        filter_params['max_experience'] = request.args.get('max_experience')
+    
+    # Загружаем преподавателей с фильтрацией
+    teacher_controller.load_teachers(filter_params)
+    
+    # Передаем параметры фильтрации в шаблон
     return teacher_view.render()
 
 
