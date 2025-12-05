@@ -1,7 +1,7 @@
 from flask import Flask, request, session, redirect, url_for
 import config
 from controllers.create_repo import CreateRepoFactory
-from controllers.controllers import TeacherController, AddTeacherController, UpdateTeacherController
+from controllers.controllers import TeacherController, AddTeacherController, UpdateTeacherController, DeleteTeacherController
 from views import views
 
 app = Flask(__name__)
@@ -21,6 +21,10 @@ add_teacher_controller.attach(add_teacher_view)
 update_teacher_controller = UpdateTeacherController(repo)
 update_teacher_view = views.UpdateTeacherView()
 update_teacher_controller.attach(update_teacher_view)
+
+delete_teacher_controller = DeleteTeacherController(repo)
+delete_teacher_view = views.DeleteTeacherView()
+delete_teacher_controller.attach(delete_teacher_view)
 
 
 def get_current_repo():
@@ -43,6 +47,7 @@ def change_repo():
         teacher_controller.set_repo(new_repo)
         add_teacher_controller.set_repo(new_repo)
         update_teacher_controller.set_repo(new_repo)
+        delete_teacher_controller.set_repo(new_repo)
     return redirect(url_for('index'))
 
 
@@ -96,6 +101,35 @@ def update_teacher(teacher_id):
         teacher_controller.load_teachers()
         return redirect(url_for('index'))
     else:
+        form_teacher_data = {
+            'teacher_id': teacher_id,
+            'last_name': teacher_data['last_name'],
+            'first_name': teacher_data['first_name'],
+            'patronymic': teacher_data['patronymic'],
+            'snils': teacher_data['snils'],
+            'academic_degree': teacher_data['academic_degree'],
+            'administrative_position': teacher_data['administrative_position'],
+            'experience_years': teacher_data['experience_years']
+        }
+        update_teacher_view.update({"success": False, 
+                                   "error": update_teacher_view.error,
+                                   "teacher_id": teacher_id,
+                                   "teacher": form_teacher_data})
+        return update_teacher_view.render()
+
+
+@app.route('/<int:teacher_id>/delete', methods=['POST'])
+def delete_teacher(teacher_id):
+    delete_teacher_controller.delete_teacher(teacher_id)
+    
+    if delete_teacher_view.success:
+        teacher_controller.load_teachers()
+        return redirect(url_for('index'))
+    else:
+        update_teacher_controller.get_teacher(teacher_id)
+        update_teacher_view.update({"success": False, 
+                                   "error": delete_teacher_view.error,
+                                   "teacher_id": teacher_id})
         return update_teacher_view.render()
 
 
