@@ -39,3 +39,17 @@ class UpdateTeacherView(Observer):
     
     def render(self):
         return render_template('update_teacher_form.html', teacher=self.teacher, error=self.error)
+
+class DeleteTeacherView(Observer):
+    def __init__(self):
+        self.success = False
+        self.error = None
+        self.teacher_id = None
+    
+    def update(self, data):
+        self.success = data.get("success", False)
+        self.error = data.get("error")
+        self.teacher_id = data.get("teacher_id")
+    
+    def render(self):
+        pass
